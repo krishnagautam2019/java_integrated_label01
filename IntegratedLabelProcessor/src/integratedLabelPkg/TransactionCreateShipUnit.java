@@ -29,6 +29,7 @@ public class TransactionCreateShipUnit {
 	private Logger loggerObj;
 	private ScandataCommunicationVariables scv;
 	private String tc_lpn_id;
+	private String ship_via;
 	public int errorCode;
 	public String labelUrl;
 	
@@ -37,6 +38,17 @@ public class TransactionCreateShipUnit {
 		this.loggerObj = vLoggerObj;
 		this.scv = vscv;
 		this.tc_lpn_id = v_tc_lpn_id;
+		this.ship_via = "";
+		this.errorCode = -1;
+		this.labelUrl = new String();
+	}
+	
+	public TransactionCreateShipUnit ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id, String v_ship_via ) {
+		this.pds = vpds;
+		this.loggerObj = vLoggerObj;
+		this.scv = vscv;
+		this.tc_lpn_id = v_tc_lpn_id;
+		this.ship_via = v_ship_via;
 		this.errorCode = -1;
 		this.labelUrl = new String();
 	}
@@ -57,7 +69,7 @@ public class TransactionCreateShipUnit {
 	        HttpURLConnection con = (HttpURLConnection) url.openConnection();
 	        con.connect();
 	        
-	        SOAPMessage request = createShipUnitCreateRequest( tc_lpn_id ); //carton, weight, warehouse, client, dstcar, dstsrv, shipPoint, billingAccount, srvlvl, sddflg);
+	        SOAPMessage request = createShipUnitCreateRequest( tc_lpn_id, ship_via ); //carton, weight, warehouse, client, dstcar, dstsrv, shipPoint, billingAccount, srvlvl, sddflg);
 	        //just for testing and develoipment
 	        //String soap_request = Convertor.convertSOAPToString(request);
 	        //System.out.println( soap_request );
@@ -86,7 +98,7 @@ public class TransactionCreateShipUnit {
 		
 	}
 
-	private SOAPMessage createShipUnitCreateRequest ( String v_tc_lpn_id ) {
+	private SOAPMessage createShipUnitCreateRequest ( String v_tc_lpn_id, String v_ship_via ) {
 		
 		loggerObj.debug( "createShipUnitCreateRequest for : " + v_tc_lpn_id );
 		
@@ -97,7 +109,7 @@ public class TransactionCreateShipUnit {
 	        SOAPPart soapPart = soapMessage.getSOAPPart();
 	       
 	        //StreamSource msgContent = new StreamSource( getcreateShipUnitMsgData ( v_tc_lpn_id ) );
-	        Document doc = Convertor.convertStringToDocument( createShipUnitGetMsgData ( v_tc_lpn_id ) );
+	        Document doc = Convertor.convertStringToDocument( createShipUnitGetMsgData ( v_tc_lpn_id, v_ship_via ) );
 	        DOMSource domSource = new DOMSource( doc );
 	        soapPart.setContent( domSource );
 	        return soapMessage;
@@ -111,7 +123,7 @@ public class TransactionCreateShipUnit {
 		return null;
 	}
 
-	private String createShipUnitGetMsgData ( String v_tc_lpn_id ) {
+	private String createShipUnitGetMsgData ( String v_tc_lpn_id, String v_ship_via ) {
 		
 		loggerObj.debug( "createShipUnitGetMsgData for : " + v_tc_lpn_id );
 		
@@ -121,11 +133,20 @@ public class TransactionCreateShipUnit {
 			
 			try {	
 				if ( dbConn != null ) {
-					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_msgs_gen.jc_scnd_msg_create_ship(?)}");
-					cstmt.registerOutParameter( 1, Types.CLOB );
-					cstmt.setString( 2, v_tc_lpn_id );
-					cstmt.executeUpdate();
-					msgClobData = cstmt.getClob(1);
+					if ( v_ship_via != null && !v_ship_via.isEmpty() ) {
+						CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_msgs_gen.jc_scnd_msg_create_ship_via(?,?)}");
+						cstmt.registerOutParameter( 1, Types.CLOB );
+						cstmt.setString( 2, v_tc_lpn_id );
+						cstmt.setString( 3, v_ship_via );
+						cstmt.executeUpdate();
+						msgClobData = cstmt.getClob(1);						
+					} else {
+						CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_msgs_gen.jc_scnd_msg_create_ship(?)}");
+						cstmt.registerOutParameter( 1, Types.CLOB );
+						cstmt.setString( 2, v_tc_lpn_id );
+						cstmt.executeUpdate();
+						msgClobData = cstmt.getClob(1);
+					}
 				}
 			} catch (SQLException e) {
 				e.printStackTrace();

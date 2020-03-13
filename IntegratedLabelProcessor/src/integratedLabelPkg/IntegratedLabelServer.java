@@ -24,7 +24,11 @@ public class IntegratedLabelServer {
 		loggerObj.info ( "The Integrated Label server is running.");
 		
 		//setup environment variables or parameters
-		String pipeName = args[0];
+		String pipeName = null;
+		if ( args.length >= 1 ) {
+			pipeName = args[0];
+		}
+		
 		if ( ( pipeName.length() <= 0 ) || pipeName.isEmpty() ) {
 			pipeName = "/apps/IPC_wms_app/integratedLabelIPC_Pipe01";
 		}

@@ -50,7 +50,11 @@ public class TransactionPrintShipLabel {
 	}
 	
 	public void printShipLabel () {
+		loggerObj.debug( "printShipLabel : " + tc_lpn_id );
+		
 		String v_label_url = get_label_url_from_db( tc_lpn_id );
+		loggerObj.debug( "response from db for label data : " + v_label_url );
+		
 		
 		if ( v_label_url.substring(0,4).contentEquals( "http" ) ) {
 			errorCode = 0;
@@ -59,15 +63,28 @@ public class TransactionPrintShipLabel {
 		} else if ( v_label_url.contentEquals( tc_lpn_id ) ) {
 			//so no tracking nbr or a label exists 
 			//create a new request to scandata
-			TransactionCreateShipUnit csu = new TransactionCreateShipUnit( pds, loggerObj, scv, tc_lpn_id );
-			csu.createShipUnitMsgScandata();
-			if ( csu.errorCode == 0 ) {
-				errorCode = 0;
-				v_label_url = csu.labelUrl;
+			loggerObj.debug( "Label doesn't exist for carton: " + tc_lpn_id + ". get the ship via for the carton." );
+			String ship_via = get_ship_via_for_carton( tc_lpn_id );
+			
+			if ( ship_via.contentEquals( "ERRR" ) ) {
+				//print error label
+			} else if ( ship_via.contentEquals( "LOAD" ) ) {
+				//print error label
+			} else if ( ship_via.contentEquals( "SHPD" ) ) {
+				//print error label
+			}  else if ( ship_via.contentEquals( "DFLT" ) ) {
+				//print error label
 			} else {
-				//print the error happened label
-				errorCode = 2;
-				loggerObj.debug ( "Carton : " + tc_lpn_id + " had error " + csu.errorCode );
+				TransactionCreateShipUnit csu = new TransactionCreateShipUnit( pds, loggerObj, scv, tc_lpn_id, ship_via );
+				csu.createShipUnitMsgScandata();
+				if ( csu.errorCode == 0 ) {
+					errorCode = 0;
+					v_label_url = csu.labelUrl;
+				} else {
+					//print the error happened label
+					errorCode = 2;
+					loggerObj.debug ( "Carton : " + tc_lpn_id + " had error " + csu.errorCode );
+				}
 			}
 		} else if ( ( ! v_label_url.contentEquals( "0" ) ) && ( ! v_label_url.substring(0,4).contentEquals( "http" ) ) ) {
 			//so we got a tracking number but no label
@@ -111,7 +128,7 @@ public class TransactionPrintShipLabel {
 	
 	private String get_label_url_from_db ( String v_tc_lpn_id ) {
 		
-		loggerObj.debug( "Get the label URL for carton : " + v_tc_lpn_id );
+		loggerObj.debug( "get_label_url_from_db : " + v_tc_lpn_id );
 		
 		try {
 			Connection dbConn = pds.getConnection();
@@ -191,6 +208,7 @@ public class TransactionPrintShipLabel {
 			job.print( doc, aset );
 			
 			is.close();
+			loggerObj.debug( "Printing completed." );
 		} catch ( UnsupportedEncodingException e ) {
 			loggerObj.error( "Printing error. \n", e );
 		} catch ( PrintException e ) {
@@ -198,6 +216,38 @@ public class TransactionPrintShipLabel {
 		} catch ( IOException e ) {
 			loggerObj.error( "Printing error. \n", e );
 		}
+	}
+
+	private String get_ship_via_for_carton ( String v_tc_lpn_id ) {
+		
+		loggerObj.debug( "get_ship_via_for_carton : " + v_tc_lpn_id );
+		
+		try {
+			Connection dbConn = pds.getConnection();
+			String ship_via = new String();
+			
+			try {	
+				if ( dbConn != null ) {
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_utils.get_ship_via_for_carton(?)}");
+					cstmt.registerOutParameter( 1, Types.VARCHAR );
+					cstmt.setString( 2, v_tc_lpn_id );
+					cstmt.executeUpdate();
+					ship_via = cstmt.getString(1);
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {
+				if ( dbConn != null) {
+					dbConn.close();
+					dbConn = null;
+				}
+			}
+			//System.out.println( clobToString( msgClobData ) );
+			return ship_via;
+		} catch ( SQLException e ) {
+			loggerObj.error( "Issue with executing SQL statement.\n", e );
+		}
+		return null;		
 	}
 
 }
