@@ -23,7 +23,7 @@ import org.w3c.dom.Document;
 
 import oracle.ucp.jdbc.PoolDataSource;
 
-public class TransactionCreateShipUnit {
+public class TransactionManifestTrailer {
 	
 	private PoolDataSource pds;
 	private Logger loggerObj;
@@ -33,7 +33,7 @@ public class TransactionCreateShipUnit {
 	public int errorCode;
 	public String labelUrl;
 	
-	public TransactionCreateShipUnit ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id ) {
+	public TransactionManifestTrailer ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id ) {
 		this.pds = vpds;
 		this.loggerObj = vLoggerObj;
 		this.scv = vscv;
@@ -43,7 +43,7 @@ public class TransactionCreateShipUnit {
 		this.labelUrl = new String();
 	}
 	
-	public TransactionCreateShipUnit ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id, String v_ship_via ) {
+	public TransactionManifestTrailer ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id, String v_ship_via ) {
 		this.pds = vpds;
 		this.loggerObj = vLoggerObj;
 		this.scv = vscv;
