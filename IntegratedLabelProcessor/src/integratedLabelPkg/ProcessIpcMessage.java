@@ -69,8 +69,10 @@ public class ProcessIpcMessage implements Runnable {
 			processGetShipUnitLabel( msgValue );
 		} else if ( msgType.equals( "LoadShipUnits" ) ) {
 			loggerObj.trace( "Processing msgType " + msgType + " for : " + msgValue );
+			processLoadTrailer( msgValue );
 		} else if ( msgType.equals( "ManifestTrailer" ) ) {
 			loggerObj.trace( "Processing msgType " + msgType + " for : " + msgValue );
+			processManifestTrailer( msgValue );
 		}
 		
 		return;
@@ -139,5 +141,16 @@ public class ProcessIpcMessage implements Runnable {
 		TransactionGetShipUnitLabelLabel gsl = new TransactionGetShipUnitLabelLabel( pds, loggerObj, scv, v_tc_lpn_id );
 		gsl.getShipUnitLabelMsgScandata();
 	}
+	
+	private void processLoadTrailer( String v_tc_shipment_id )  {
+		loggerObj.debug( "Process Load Trailer : " + v_tc_shipment_id );
+		TransactionLoadShipUnitsForTrailer gsl = new TransactionLoadShipUnitsForTrailer( pds, loggerObj, scv, v_tc_shipment_id );
+		gsl.processLoadShipUnitsForTrailer();
+	}
 
+	private void processManifestTrailer( String v_tc_shipment_id )  {
+		loggerObj.debug( "Process Manifest Trailer : " + v_tc_shipment_id );
+		TransactionManifestTrailer gsl = new TransactionManifestTrailer( pds, loggerObj, scv, v_tc_shipment_id );
+		gsl.manifestTrailerMsgScandata(0);
+	}
 }

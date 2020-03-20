@@ -69,11 +69,25 @@ public class TransactionPrintShipLabel {
 			if ( ship_via.contentEquals( "ERRR" ) ) {
 				//print error label
 			} else if ( ship_via.contentEquals( "LOAD" ) ) {
-				//print error label
+				//print carton loaded label
+				String labelData = get_label_err_loaded(tc_lpn_id);
+				print_label_to_printer( labelData, printer_name );
+				return;
 			} else if ( ship_via.contentEquals( "SHPD" ) ) {
 				//print error label
+				String labelData = get_label_err_shipped(tc_lpn_id);
+				print_label_to_printer( labelData, printer_name );
+				return;				
+			} else if ( ship_via.contentEquals( "INTL" ) ) {
+				//print error label
+				String labelData = get_label_err_international(tc_lpn_id);
+				print_label_to_printer( labelData, printer_name );
+				return;				
 			}  else if ( ship_via.contentEquals( "DFLT" ) ) {
 				//print error label
+				String labelData = get_label_err_generic(tc_lpn_id);
+				print_label_to_printer( labelData, printer_name );
+				return;				
 			} else {
 				TransactionCreateShipUnit csu = new TransactionCreateShipUnit( pds, loggerObj, scv, tc_lpn_id, ship_via );
 				csu.createShipUnitMsgScandata();
@@ -249,5 +263,125 @@ public class TransactionPrintShipLabel {
 		}
 		return null;		
 	}
+	
+	private String get_label_err_loaded ( String v_tc_lpn_id ) {
+		loggerObj.debug( "get_ship_via_for_carton : " + v_tc_lpn_id );
+		
+		String label_data = "^XA^XZ";
+		try {
+			Connection dbConn = pds.getConnection();
+			try {	
+				if ( dbConn != null ) {
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_gen_labels.jc_scnd_gen_err_lbl_loaded(?)}");
+					cstmt.registerOutParameter( 1, Types.VARCHAR );
+					cstmt.setString( 2, v_tc_lpn_id );
+					cstmt.executeUpdate();
+					label_data = cstmt.getString(1);
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {
+				if ( dbConn != null) {
+					dbConn.close();
+					dbConn = null;
+				}
+			}
+			//System.out.println( clobToString( msgClobData ) );
+			return label_data;
+		} catch ( SQLException e ) {
+			loggerObj.error( "Issue with executing SQL statement.\n", e );
+		}
+		return label_data;		
+	}
 
+	private String get_label_err_shipped ( String v_tc_lpn_id ) {
+		loggerObj.debug( "get_ship_via_for_carton : " + v_tc_lpn_id );
+		
+		String label_data = "^XA^XZ";
+		try {
+			Connection dbConn = pds.getConnection();
+			try {	
+				if ( dbConn != null ) {
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_gen_labels.jc_scnd_gen_err_lbl_shipped(?)}");
+					cstmt.registerOutParameter( 1, Types.VARCHAR );
+					cstmt.setString( 2, v_tc_lpn_id );
+					cstmt.executeUpdate();
+					label_data = cstmt.getString(1);
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {
+				if ( dbConn != null) {
+					dbConn.close();
+					dbConn = null;
+				}
+			}
+			//System.out.println( clobToString( msgClobData ) );
+			return label_data;
+		} catch ( SQLException e ) {
+			loggerObj.error( "Issue with executing SQL statement.\n", e );
+		}
+		return label_data;		
+	}
+	
+	private String get_label_err_international ( String v_tc_lpn_id ) {
+		loggerObj.debug( "get_ship_via_for_carton : " + v_tc_lpn_id );
+		
+		String label_data = "^XA^XZ";
+		try {
+			Connection dbConn = pds.getConnection();
+			try {	
+				if ( dbConn != null ) {
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_gen_labels.jc_scnd_gen_err_lbl_intl(?)}");
+					cstmt.registerOutParameter( 1, Types.VARCHAR );
+					cstmt.setString( 2, v_tc_lpn_id );
+					cstmt.executeUpdate();
+					label_data = cstmt.getString(1);
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {
+				if ( dbConn != null) {
+					dbConn.close();
+					dbConn = null;
+				}
+			}
+			//System.out.println( clobToString( msgClobData ) );
+			return label_data;
+		} catch ( SQLException e ) {
+			loggerObj.error( "Issue with executing SQL statement.\n", e );
+		}
+		return label_data;		
+	}
+
+	private String get_label_err_generic ( String v_tc_lpn_id ) {
+		loggerObj.debug( "get_ship_via_for_carton : " + v_tc_lpn_id );
+		
+		String label_data = "^XA^XZ";
+		try {
+			Connection dbConn = pds.getConnection();
+			try {	
+				if ( dbConn != null ) {
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_gen_labels.jc_scnd_gen_err_lbl_generic(?,?)}");
+					cstmt.registerOutParameter( 1, Types.VARCHAR );
+					cstmt.setString( 2, v_tc_lpn_id );
+					cstmt.setString( 3, "unkown error; contact wms support" );
+					cstmt.executeUpdate();
+					label_data = cstmt.getString(1);
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {
+				if ( dbConn != null) {
+					dbConn.close();
+					dbConn = null;
+				}
+			}
+			//System.out.println( clobToString( msgClobData ) );
+			return label_data;
+		} catch ( SQLException e ) {
+			loggerObj.error( "Issue with executing SQL statement.\n", e );
+		}
+		return label_data;		
+	}
 }

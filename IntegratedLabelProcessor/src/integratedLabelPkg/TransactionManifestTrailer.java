@@ -28,32 +28,36 @@ public class TransactionManifestTrailer {
 	private PoolDataSource pds;
 	private Logger loggerObj;
 	private ScandataCommunicationVariables scv;
-	private String tc_lpn_id;
-	private String ship_via;
+	private String tc_shipment_id;
 	public int errorCode;
-	public String labelUrl;
 	
-	public TransactionManifestTrailer ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id ) {
+	public TransactionManifestTrailer ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_shipment_id ) {
 		this.pds = vpds;
 		this.loggerObj = vLoggerObj;
 		this.scv = vscv;
-		this.tc_lpn_id = v_tc_lpn_id;
-		this.ship_via = "";
+		this.tc_shipment_id = v_tc_shipment_id;
 		this.errorCode = -1;
-		this.labelUrl = new String();
 	}
 	
-	public TransactionManifestTrailer ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id, String v_ship_via ) {
+	public TransactionManifestTrailer ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_shipment_id, String v_ship_via ) {
 		this.pds = vpds;
 		this.loggerObj = vLoggerObj;
 		this.scv = vscv;
-		this.tc_lpn_id = v_tc_lpn_id;
-		this.ship_via = v_ship_via;
+		this.tc_shipment_id = v_tc_shipment_id;
 		this.errorCode = -1;
-		this.labelUrl = new String();
 	}
 	
-	public void createShipUnitMsgScandata () {
+	public void manifestTrailerMsgScandata ( int loadMsgs ) {
+		loggerObj.debug( "Process manifest Trailer : " + tc_shipment_id );
+		
+		//if cartons are not already loaded then go ahead and load them.
+		if (loadMsgs == 0) {
+			//loggerObj.debug( "Process Load Trail : " + tc_shipment_id );
+			TransactionLoadShipUnitsForTrailer gsl = new TransactionLoadShipUnitsForTrailer( pds, loggerObj, scv, tc_shipment_id );
+			gsl.processLoadShipUnitsForTrailer();
+		}
+		
+		
         URL url;
         
         //Create SOAP Connection
@@ -69,7 +73,7 @@ public class TransactionManifestTrailer {
 	        HttpURLConnection con = (HttpURLConnection) url.openConnection();
 	        con.connect();
 	        
-	        SOAPMessage request = createShipUnitCreateRequest( tc_lpn_id, ship_via ); //carton, weight, warehouse, client, dstcar, dstsrv, shipPoint, billingAccount, srvlvl, sddflg);
+	        SOAPMessage request = manifestTrailerCreateRequest( tc_shipment_id ); //carton, weight, warehouse, client, dstcar, dstsrv, shipPoint, billingAccount, srvlvl, sddflg);
 	        //just for testing and develoipment
 	        //String soap_request = Convertor.convertSOAPToString(request);
 	        //System.out.println( soap_request );
@@ -82,7 +86,7 @@ public class TransactionManifestTrailer {
 	        
 	        //time to process the process the return
 	        //upload all the response xml to db to process
-	        createShipUnitProcessResponse( soap_response );
+	        manifestTrailerProcessResponse( soap_response );
 	        //System.out.println( labelUrl );
 		} catch ( UnsupportedOperationException e ) {
 			loggerObj.error ( "Soap message communication issue.\n", e );
@@ -98,9 +102,9 @@ public class TransactionManifestTrailer {
 		
 	}
 
-	private SOAPMessage createShipUnitCreateRequest ( String v_tc_lpn_id, String v_ship_via ) {
+	private SOAPMessage manifestTrailerCreateRequest ( String v_tc_shipment_id ) {
 		
-		loggerObj.debug( "createShipUnitCreateRequest for : " + v_tc_lpn_id );
+		loggerObj.debug( "manifestTrailerCreateRequest for : " + v_tc_shipment_id );
 		
 		try {
 			MessageFactory messageFactory = MessageFactory.newInstance();
@@ -108,8 +112,8 @@ public class TransactionManifestTrailer {
 			SOAPMessage soapMessage = messageFactory.createMessage();
 	        SOAPPart soapPart = soapMessage.getSOAPPart();
 	       
-	        //StreamSource msgContent = new StreamSource( getcreateShipUnitMsgData ( v_tc_lpn_id ) );
-	        Document doc = Convertor.convertStringToDocument( createShipUnitGetMsgData ( v_tc_lpn_id, v_ship_via ) );
+	        //StreamSource msgContent = new StreamSource( getmanifestTrailerMsgData ( v_tc_shipment_id ) );
+	        Document doc = Convertor.convertStringToDocument( manifestTrailerGetMsgData ( v_tc_shipment_id ) );
 	        DOMSource domSource = new DOMSource( doc );
 	        soapPart.setContent( domSource );
 	        return soapMessage;
@@ -123,9 +127,9 @@ public class TransactionManifestTrailer {
 		return null;
 	}
 
-	private String createShipUnitGetMsgData ( String v_tc_lpn_id, String v_ship_via ) {
+	private String manifestTrailerGetMsgData ( String v_tc_shipment_id ) {
 		
-		loggerObj.debug( "createShipUnitGetMsgData for : " + v_tc_lpn_id );
+		loggerObj.debug( "manifestTrailerGetMsgData for : " + v_tc_shipment_id );
 		
 		try {
 			Connection dbConn = pds.getConnection();
@@ -133,20 +137,11 @@ public class TransactionManifestTrailer {
 			
 			try {	
 				if ( dbConn != null ) {
-					if ( v_ship_via != null && !v_ship_via.isEmpty() ) {
-						CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_msgs_gen.jc_scnd_msg_create_ship_via(?,?)}");
-						cstmt.registerOutParameter( 1, Types.CLOB );
-						cstmt.setString( 2, v_tc_lpn_id );
-						cstmt.setString( 3, v_ship_via );
-						cstmt.executeUpdate();
-						msgClobData = cstmt.getClob(1);						
-					} else {
-						CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_msgs_gen.jc_scnd_msg_create_ship_via(?)}");
-						cstmt.registerOutParameter( 1, Types.CLOB );
-						cstmt.setString( 2, v_tc_lpn_id );
-						cstmt.executeUpdate();
-						msgClobData = cstmt.getClob(1);
-					}
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_msgs_gen.jc_scnd_msg_manifest_trlr(?)}");
+					cstmt.registerOutParameter( 1, Types.CLOB );
+					cstmt.setString( 2, v_tc_shipment_id );
+					cstmt.executeUpdate();
+					msgClobData = cstmt.getClob(1);
 				}
 			} catch (SQLException e) {
 				e.printStackTrace();
@@ -166,9 +161,9 @@ public class TransactionManifestTrailer {
 		return null;
 	}
 	
-	private void createShipUnitProcessResponse ( String v_soap_response ) {
+	private void manifestTrailerProcessResponse ( String v_soap_response ) {
 		
-		loggerObj.debug( "createShipUnitProcessResponse" );
+		loggerObj.debug( "manifestTrailerProcessResponse" );
 		loggerObj.trace( "v_soap_response" + v_soap_response );
 		
 		try {
@@ -177,15 +172,14 @@ public class TransactionManifestTrailer {
 			
 			try {	
 				if ( dbConn != null ) {
-					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_response_process.process_create_ship_reponse(?)}");
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_response_process.process_manifest_trlr_reponse(?)}");
 					cstmt.registerOutParameter( 1, Types.VARCHAR );
 					cstmt.setString( 2, v_soap_response );
 					cstmt.executeUpdate();
 					msgResponse = cstmt.getString( 1 );
 					
-					if ( msgResponse.substring(0,4).contentEquals( "http" ) ) {
+					if ( msgResponse.substring(0,4).contentEquals( "0" ) ) {
 						errorCode = 0;
-						labelUrl = msgResponse;
 					} else {
 						errorCode = Integer.parseInt(msgResponse);
 					}
