@@ -6,14 +6,6 @@ CREATE OR REPLACE package jc_scandata_msgs_gen as
                 , p_delim           IN      VARCHAR2 DEFAULT ',' )
             return number;
 
-
-    function jc_scnd_msg_create_ship_bknd ( 
-                                  v_tc_lpn_id       in      varchar2
-                                , v_ship_via        in      varchar2
-                                , v_session_id      in      number )
-                return clob;
-
-
     function jc_scnd_msg_create_ship ( 
                                   v_tc_lpn_id       in      varchar2
                                 , v_session_id      in      number      default null )
@@ -23,7 +15,7 @@ CREATE OR REPLACE package jc_scandata_msgs_gen as
     --copy of the function to get the xml for alternate ship via
     function jc_scnd_msg_create_ship_via ( 
                                   v_tc_lpn_id       in      varchar2
-                                , v_ship_via        in      varchar2
+                                , v_ship_via        in      varchar2    default null
                                 , v_session_id      in      number      default null )
                 return clob;
 
@@ -112,16 +104,35 @@ CREATE OR REPLACE package body jc_scandata_msgs_gen as
     END parse_lpn_list;
     
 
-    function jc_scnd_msg_create_ship_bknd ( 
+    function jc_scnd_msg_create_ship ( 
                                   v_tc_lpn_id       in      varchar2
-                                , v_ship_via        in      varchar2
-                                , v_session_id      in      number )
+                                , v_session_id      in      number      default null ) 
                 return clob as
-        v_code      varchar2(10);
-        v_errm      varchar2(256);
-        
-        v_xml_clob  clob;
+        v_code      VARCHAR2(10);
+        v_errm      VARCHAR2(256); 
+
+        v_xml_clob              CLOB;
+        v_check_multilpn        number;
+        v_session_id2           number;
+        v_ship_via              varchar2(4);
     begin
+        
+        --check if its a  pallet or a carton
+        v_check_multilpn := instr( v_tc_lpn_id , ',' );
+        
+        --get the session_id if its null
+        if ( v_session_id is null ) then
+            v_session_id2 := get_seession_id_when_null( v_session_id );
+        else
+            v_session_id2 := v_session_id;
+        end if;
+        
+        if v_check_multilpn <= 0 then
+            select nvl( l2.ship_via, 'DFLT' )
+              into v_ship_via
+              from wms_lpn l2
+             where l2.tc_lpn_id = v_tc_lpn_id; 
+            
         SELECT  XMLSERIALIZE( CONTENT
                     XMLElement( "env:Envelope"
                         , XMLATTRIBUTES( 
@@ -154,7 +165,7 @@ CREATE OR REPLACE package body jc_scandata_msgs_gen as
                                                         , XMLElement( "EstimatedWeight", t1.estimated_weight ) 
                                                         , XMLElement( "BillingAccountID", 'ADC' ) 
                                                         , XMLElement( "Status", 'LABELED' ) 
-                                                        , XMLElement( "ShipVia", nvl( v_ship_via, t2.ship_via ) ) 
+                                                        , XMLElement( "ShipVia", t2.ship_via ) 
                                                         , XMLElement( "Weight", t1.weight )
                                                         , ( select  XMLElement( "ADDRESS"
                                                                         , XMLConcat( 
@@ -189,52 +200,7 @@ CREATE OR REPLACE package body jc_scandata_msgs_gen as
           join jc_cartons   t2
             on t2.tc_lpn_id = t1.tc_lpn_id
          where t1.tc_lpn_id = v_tc_lpn_id ;
-         
-         return v_xml_clob;
-    exception
-       when jc_exception_pkg.assertion_failure_exception then
-          rollback;
-          raise;
-       when others then 
-          rollback;
-          v_code := SQLCODE;
-          v_errm := SUBSTR(SQLERRM, 1, 255);
-          jc_exception_pkg.throw( jc_exception_pkg.unhandled_except, v_code || ' - ' || v_errm || ' ($Header$)',
-                                    'v_tc_lpn_id : ' || v_tc_lpn_id || chr(10) ||
-                                    'v_ship_via : ' || v_ship_via || chr(10) ||
-                                    'v_session_id : ' || v_session_id );             
-    end;
 
-    function jc_scnd_msg_create_ship ( 
-                                  v_tc_lpn_id       in      varchar2
-                                , v_session_id      in      number      default null ) 
-                return clob as
-        v_code      VARCHAR2(10);
-        v_errm      VARCHAR2(256); 
-
-        v_xml_clob              CLOB;
-        v_check_multilpn        number;
-        v_session_id2           number;
-        v_ship_via              varchar2(4);
-    begin
-        
-        --check if its a  pallet or a carton
-        v_check_multilpn := instr( v_tc_lpn_id , ',' );
-        
-        --get the session_id if its null
-        if ( v_session_id is null ) then
-            v_session_id2 := get_seession_id_when_null( v_session_id );
-        else
-            v_session_id2 := v_session_id;
-        end if;
-        
-        if v_check_multilpn <= 0 then
-            select nvl( l2.ship_via, 'DFLT' )
-              into v_ship_via
-              from wms_lpn l2
-             where l2.tc_lpn_id = v_tc_lpn_id; 
-            
-            v_xml_clob := jc_scnd_msg_create_ship_bknd( v_tc_lpn_id, v_ship_via, v_session_id );
         --if its a multilpn parameter then
         else
             v_xml_clob := jc_scnd_msg_create_ship_plt ( v_tc_lpn_id, v_session_id );
@@ -257,7 +223,7 @@ CREATE OR REPLACE package body jc_scandata_msgs_gen as
 
     function jc_scnd_msg_create_ship_via ( 
                                   v_tc_lpn_id       in      varchar2
-                                , v_ship_via        in      varchar2
+                                , v_ship_via        in      varchar2    default null
                                 , v_session_id      in      number      default null )
                 return clob as
         v_code      varchar2(10);
@@ -265,6 +231,10 @@ CREATE OR REPLACE package body jc_scandata_msgs_gen as
         
         v_xml_clob              clob;
         v_session_id2           number;
+        
+        v_data_xml              varchar2(1000);
+        
+        v_ship_via2             wms_lpn.ship_via%type := v_ship_via;
     begin
         --get the session_id if its null
         if ( v_session_id is null ) then
@@ -273,7 +243,85 @@ CREATE OR REPLACE package body jc_scandata_msgs_gen as
             v_session_id2 := v_session_id;
         end if;
         
-        v_xml_clob := jc_scnd_msg_create_ship_bknd( v_tc_lpn_id, nvl(v_ship_via,'DFLT'), v_session_id );
+        --if ship_via is null
+        if ( v_ship_via2 is null ) then
+            v_ship_via2 := jc_scandata_utils.get_ship_via_for_carton ( v_tc_lpn_id );
+        end if;
+        
+        v_data_xml := jc_scandata_gen_labels.gen_4x2_ppk_for_int_label2 ( v_tc_lpn_id, v_ship_via );
+        
+        SELECT  XMLSERIALIZE( CONTENT
+                    XMLElement( "env:Envelope"
+                        , XMLATTRIBUTES( 
+                              'http://schemas.xmlsoap.org/soap/envelope/'                       AS "xmlns:env"     
+                            , 'http://ScanData.com/WTM/'                                        AS "xmlns:wtm" )
+                        , XMLConcat(
+                              XMLElement( "env:Header" )
+                            , XMLElement( "env:Body"
+                                , XMLElement( "wtm:CreateShipUnits"
+                                    , XMLATTRIBUTES( 
+                                          'http://ScanData.com/WTM/'                            AS "xmlns:wtm" )
+                                    , XMLConcat ( 
+                                          XMLElement( "wtm:SessionID"
+                                            , XMLATTRIBUTES( 
+                                                  'http://ScanData.com/WTM/'                    AS "xmlns:wtm" )
+                                            , nvl( v_session_id, get_seession_id_when_null( v_session_id ) ) )
+                                        , XMLElement( "wtm:CreateShipUnitsParams"
+                                            , XMLATTRIBUTES( 
+                                                  'http://ScanData.com/WTM/'                    AS "xmlns:wtm" )
+                                            , XMLElement( "CREATE_SHIP_UNITS_PARAMS"
+                                                , XMLATTRIBUTES( 
+                                                      '1'                                                               AS "MSN"     
+                                                    , 'http://ScanData.com/WTM/XMLSchemas/WTM_XMLSchema_14.00.0000.xsd' AS "xmlns" )
+                                                , XMLElement( "SHIP_UNIT"
+                                                    , XMLConcat(
+                                                          XMLElement( "CartonNumber", t1.tc_lpn_id )
+                                                        , XMLElement( "DistributionCenter", t1.o_facility_alias_id )
+                                                        , XMLElement( "OrderNumber", t1.order_id ) 
+                                                        , XMLElement( "Quantity", t2.carton_units ) 
+                                                        , XMLElement( "EstimatedWeight", t1.estimated_weight ) 
+                                                        , XMLElement( "BillingAccountID", 'ADC' ) 
+                                                        , XMLElement( "Status", 'LABELED' ) 
+                                                        , XMLElement( "ShipVia", nvl( v_ship_via2, t2.ship_via ) ) 
+                                                        , XMLElement( "Weight", t1.weight )
+                                                        , decode( v_data_xml
+                                                                        , null, null
+                                                                        , XMLElement ( "DataXML"
+                                                                            , XMLElement ( "Label4By2", v_data_xml ) ) )
+                                                        , ( select  XMLElement( "ADDRESS"
+                                                                        , XMLConcat( 
+                                                                              XMLElement( "Class", 'DELIVER_TO' )
+                                                                            , XMLElement( "AddressCode", t1.d_facility_alias_id )
+                                                                            , XMLElement( "CompanyName", nvl( t5.ship_contact, 'JCREW ' || t1.d_facility_alias_id ) )
+                                                                            , XMLElement( "IndividualName",  nvl( t5.facility_name, t3.facility_name ) )
+                                                                            , XMLElement( "StreetAddress",  nvl( t5.ship_address_1, t4.address_1 ) )
+                                                                            , XMLElement( "Address1",  nvl( t5.ship_address_2, t4.address_2 ) )
+                                                                            , XMLElement( "Address2",  nvl( t5.ship_address_3, t4.address_3 ) )
+                                                                            , XMLElement( "City",  nvl( t5.ship_city, t4.city ) )
+                                                                            , XMLElement( "State",  nvl( t5.ship_state_prov, t4.state_prov ) )
+                                                                            , XMLElement( "ZIPCode",  nvl( t5.ship_postal_code, t4.postal_code ) )
+                                                                            , XMLElement( "Country",  decode( nvl( t5.ship_country_code, t4.country_code )
+                                                                                                            , 'US', 'UNITED STATES'
+                                                                                                            , 'CA', 'CANADA'
+                                                                                                            , 'UNITED STATES' ) )
+                                                                            , XMLElement( "PhoneNumber",  nvl( t5.ship_postal_code, t4.postal_code ) )
+                                                                        ) )
+                                                              from msf_facility_alias   t3
+                                                              join msf_facility         t4
+                                                                on t4.facility_id       = t3.facility_id
+                                                              left join jc_stores       t5
+                                                                on t5.facility_alias_id = t3.facility_alias_id
+                                                             where t3.facility_alias_id = t1.d_facility_alias_id )   
+        
+                                                        ) )
+                                                , XMLElement( "LabelOutputFileType", 'Buffer' ) ) ) ) ) ) )
+                    ) AS CLOB ) c1
+          INTO v_xml_clob
+          FROM wms_lpn      t1
+          join jc_cartons   t2
+            on t2.tc_lpn_id = t1.tc_lpn_id
+         where t1.tc_lpn_id = v_tc_lpn_id ;
+
         return v_xml_clob;
     exception
        when jc_exception_pkg.assertion_failure_exception then

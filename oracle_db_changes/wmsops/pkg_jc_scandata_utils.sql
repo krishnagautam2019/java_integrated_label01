@@ -11,7 +11,7 @@ CREATE OR REPLACE package jc_scandata_utils as
 
     function get_ship_via_for_carton    ( v_tc_lpn_id       in  varchar2 )
             return varchar2;
-
+            
 
 end jc_scandata_utils;
 /
