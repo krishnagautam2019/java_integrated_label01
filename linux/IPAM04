@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Print queue.
+Real_PrintQ=IPAM04SH
+IPC_file=/apps/IPC_wms_app/integratedLabelIPC_Pipe01
+IPC_log=/apps/scope/scripts/integrated_label/ipc_log.log
+
+
+### Location of CUPS' "d" files.
+##DDIR=/var/spool/cups
+### Find job originally sent to the queue.
+##JOB=$(ls $DDIR | grep "$TEAJOBID"-001)
+
+## parse the header line of the input file
+hdr_input=`head -1 ${TEADATAFILE}`
+parsed_arr=( $(echo $hdr_input | tr '|' ' ') ) # Populate the tokens into an array
+hdr_command=${parsed_arr[1]}
+hdr_value=${parsed_arr[2]}
+
+if [ ${hdr_command} = "PPK_Label_2x4" ] && [ -n ${hdr_value} ]
+	then
+		ipc_command="Printer|${hdr_value}|${Real_PrintQ}|"
+		log_date=`date '+%Y%m%d_%H%M'`
+		echo "${log_date} : ${ipc_command}" >> ${IPC_log}
+		##echo ${ipc_command} >> ${IPC_file}
+		echo ${ipc_command} | nc localhost 37000
+		exit -1
+	else
+		##print the file to the real printer
+		##lp -d ${Real_PrintQ} $DDIR/$JOB
+		echo "${log_date} : ${ipc_command}" >> ${IPC_log}
+		lp -d ${Real_PrintQ} ${TEADATAFILE}
+fi
+
+
+# Causes the job not to be sent to the real backend. Not needed
+# if the URI for pretendq is tea4cups:/file:/dev/null.
+exit -1

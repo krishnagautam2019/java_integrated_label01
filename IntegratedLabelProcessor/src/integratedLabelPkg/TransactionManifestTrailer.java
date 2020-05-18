@@ -86,7 +86,7 @@ public class TransactionManifestTrailer {
 	        
 	        //time to process the process the return
 	        //upload all the response xml to db to process
-	        manifestTrailerProcessResponse( soap_response );
+	        manifestTrailerProcessResponse( soap_response, tc_shipment_id );
 	        //System.out.println( labelUrl );
 		} catch ( UnsupportedOperationException e ) {
 			loggerObj.error ( "Soap message communication issue.\n", e );
@@ -137,7 +137,7 @@ public class TransactionManifestTrailer {
 			
 			try {	
 				if ( dbConn != null ) {
-					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_msgs_gen.jc_scnd_msg_manifest_trlr(?)}");
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scnadata_itgl_msgs_gen.jc_scnd_msg_manifest_trlr(?)}");
 					cstmt.registerOutParameter( 1, Types.CLOB );
 					cstmt.setString( 2, v_tc_shipment_id );
 					cstmt.executeUpdate();
@@ -161,7 +161,7 @@ public class TransactionManifestTrailer {
 		return null;
 	}
 	
-	private void manifestTrailerProcessResponse ( String v_soap_response ) {
+private void manifestTrailerProcessResponse ( String v_soap_response, String v_tc_shipment_id ) {
 		
 		loggerObj.debug( "manifestTrailerProcessResponse" );
 		loggerObj.trace( "v_soap_response" + v_soap_response );
@@ -172,9 +172,10 @@ public class TransactionManifestTrailer {
 			
 			try {	
 				if ( dbConn != null ) {
-					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_response_process.process_manifest_trlr_reponse(?)}");
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_response_process.process_manifest_trlr_reponse(?,?)}");
 					cstmt.registerOutParameter( 1, Types.VARCHAR );
 					cstmt.setString( 2, v_soap_response );
+					cstmt.setString( 3, v_tc_shipment_id );
 					cstmt.executeUpdate();
 					msgResponse = cstmt.getString( 1 );
 					

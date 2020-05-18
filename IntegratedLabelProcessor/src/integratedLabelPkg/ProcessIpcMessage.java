@@ -73,6 +73,9 @@ public class ProcessIpcMessage implements Runnable {
 		} else if ( msgType.equals( "ManifestTrailer" ) ) {
 			loggerObj.trace( "Processing msgType " + msgType + " for : " + msgValue );
 			processManifestTrailer( msgValue );
+		} else if ( msgType.equals( "LoadAndInvoice" ) ) {
+			loggerObj.trace( "Processing msgType " + msgType + " for : " + msgValue );
+			processLoadAndInvoiceTrailer( msgValue );
 		}
 		
 		return;
@@ -151,6 +154,12 @@ public class ProcessIpcMessage implements Runnable {
 	private void processManifestTrailer( String v_tc_shipment_id )  {
 		loggerObj.debug( "Process Manifest Trailer : " + v_tc_shipment_id );
 		TransactionManifestTrailer gsl = new TransactionManifestTrailer( pds, loggerObj, scv, v_tc_shipment_id );
+		gsl.manifestTrailerMsgScandata(1);
+	}
+	
+	private void processLoadAndInvoiceTrailer( String v_tc_shipment_id )  {
+		loggerObj.debug( "Process Manifest Trailer : " + v_tc_shipment_id );
+		TransactionInvoiceTrailer gsl = new TransactionInvoiceTrailer( pds, loggerObj, scv, v_tc_shipment_id );
 		gsl.manifestTrailerMsgScandata(0);
 	}
 }

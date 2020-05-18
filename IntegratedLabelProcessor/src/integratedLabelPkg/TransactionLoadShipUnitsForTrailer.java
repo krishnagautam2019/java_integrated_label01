@@ -105,16 +105,24 @@ public class TransactionLoadShipUnitsForTrailer {
 		
 		loggerObj.debug( "load_all_cartons_in_scandata for : " + v_tc_shipment_id );
 		
-		int total_msgs = (int) Math.ceil(v_total_lpn_count/v_max_cartons_in_request);
+		int total_msgs = (int) Math.ceil(( (double) v_total_lpn_count )/v_max_cartons_in_request);
 		int loaded_cartons = 0;
 		
-		for( int i=0; i<=total_msgs; i++ ) {
+		for( int i=1; i<=total_msgs; i++ ) {
 			String soap_response = load_ship_units_msg_scandata( v_tc_shipment_id, i );
 			
 			if ( ! soap_response.contentEquals( "0" ) ) {
 				//process the response now
-				loaded_cartons = loadShipUnitProcessResponse( soap_response );
-			}
+				int response_value = loadShipUnitProcessResponse( soap_response, v_tc_shipment_id + i );
+
+				if ( response_value == -547 ) {
+					//response had error indicating that loading already finished
+					loaded_cartons = v_total_lpn_count;
+					i = total_msgs + 1;
+				} else {
+					loaded_cartons = loaded_cartons + response_value;
+				}
+			} 
 		}
 		
 		return loaded_cartons;
@@ -140,7 +148,7 @@ public class TransactionLoadShipUnitsForTrailer {
 	        con.connect();
 	        
 	        SOAPMessage request = loadShipUnitCreateRequest( v_tc_shipment_id, msg_part ); //carton, weight, warehouse, client, dstcar, dstsrv, shipPoint, billingAccount, srvlvl, sddflg);
-	        //just for testing and develoipment
+	        //just for testing and development
 	        //String soap_request = Convertor.convertSOAPToString(request);
 	        //System.out.println( soap_request );
 
@@ -204,7 +212,7 @@ public class TransactionLoadShipUnitsForTrailer {
 			
 			try {	
 				if ( dbConn != null ) {
-					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_msgs_gen.jc_scnd_msg_load_ship(?,?)}");
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scnadata_itgl_msgs_gen.jc_scnd_msg_load_ship(?,?)}");
 					cstmt.registerOutParameter( 1, Types.CLOB );
 					cstmt.setString( 2, v_tc_shipment_id );
 					cstmt.setInt( 3, msg_part );
@@ -229,7 +237,7 @@ public class TransactionLoadShipUnitsForTrailer {
 		return null;
 	}
 
-	private int loadShipUnitProcessResponse ( String v_soap_response ) {
+	private int loadShipUnitProcessResponse ( String v_soap_response, String v_shipment_part ) {
 		
 		loggerObj.debug( "loadShipUnitProcessResponse" );
 		loggerObj.trace( v_soap_response );
@@ -241,9 +249,10 @@ public class TransactionLoadShipUnitsForTrailer {
 			
 			try {	
 				if ( dbConn != null ) {
-					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_response_process.process_create_ship_reponse(?)}");
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_response_process.process_load_ship_reponse(?,?)}");
 					cstmt.registerOutParameter( 1, Types.INTEGER );
 					cstmt.setString( 2, v_soap_response );
+					cstmt.setString( 3, v_shipment_part );
 					cstmt.executeUpdate();
 					v_loaded_cartons_in_msg = cstmt.getInt( 1 );
 				}

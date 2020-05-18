@@ -121,7 +121,7 @@ public class TransactionGetShipUnitLabelLabel {
 			
 			try {	
 				if ( dbConn != null ) {
-					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_msgs_gen.jc_scnd_msg_get_ship_label(?)}");
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scnadata_itgl_msgs_gen.jc_scnd_msg_get_ship_label(?)}");
 					cstmt.registerOutParameter( 1, Types.CLOB );
 					cstmt.setString( 2, v_tc_lpn_id );
 					cstmt.executeUpdate();

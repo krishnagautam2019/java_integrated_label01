@@ -1,6 +1,16 @@
 package integratedLabelPkg;
 
 import org.apache.logging.log4j.Logger;
+
+import oracle.ucp.jdbc.PoolDataSource;
+import oracle.ucp.jdbc.PoolDataSourceFactory;
+
+import java.net.ServerSocket;
+import java.sql.SQLException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.logging.log4j.LogManager;
 
 /**
@@ -22,25 +32,83 @@ public class IntegratedLabelServer {
 	public static void main( String[] args ) throws Exception {
     	
 		loggerObj.info ( "The Integrated Label server is running.");
-		
-		//setup environment variables or parameters
-		String pipeName = null;
-		if ( args.length >= 1 ) {
-			pipeName = args[0];
+			
+        int clientNumber = 0;
+        
+        //lets create a new thread pool for processing the inputs received
+		ServerSocket listener = new ServerSocket(37000);
+		ScandataCommunicationVariables scv = new ScandataCommunicationVariables();
+		PrinterSupport printers = new PrinterSupport();
+        ExecutorService executor = Executors.newFixedThreadPool(10);
+        PoolDataSource pds = connectionInit();
+        
+		//once the thread has been spawned lets get a connection pool going
+		if ( pds == null) {
+			try {
+				pds = connectionInit();
+			} catch ( Exception e ) {
+				loggerObj.error( "Exception in trying to create DB connection. \n", e );
+			}	
 		}
-		
-		if ( ( pipeName.length() <= 0 ) || pipeName.isEmpty() ) {
-			pipeName = "/apps/IPC_wms_app/integratedLabelIPC_Pipe01";
+        
+        try {
+            while (true) {
+                new IntegratedLabel_IPC_Thread( listener.accept(), clientNumber++, loggerObj, pds, executor, scv, printers ).run();
+                loggerObj.info("The server is now listening on port 37000.");
+                
+                if ( clientNumber == 9998 ) {
+                	clientNumber = 0;
+                }
+            }
+        } finally {
+            listener.close();
+			try {
+				executor.shutdown();
+				executor.awaitTermination(1, TimeUnit.SECONDS);
+			} catch ( InterruptedException e ) {
+				loggerObj.error( "Issue closing the excutor service. \n", e );
+			}
 		}
-    	
-		int clientNumber = 0;
+
+	}
+	
+	private static PoolDataSource connectionInit() {
+		
 		try {
-			//todo: respawn the thread after it ties
-			//System.out.println ( "Spawning the IPC threrad # " + clientNumber++ );
-			loggerObj.info ( "Spawning the IPC threrad # " + clientNumber++ );
-			new IntegratedLabel_IPC_Thread( loggerObj, pipeName ).run();
-		} finally {
-			loggerObj.info ( "Exiting the program entirelly.");
+			PoolDataSource localPds = PoolDataSourceFactory.getPoolDataSource();
+			
+			//Setting connection properties of the data source
+			localPds.setConnectionFactoryClassName("oracle.jdbc.pool.OracleDataSource");
+			
+            ///*
+            //options for prod
+			localPds.setURL("jdbc:oracle:thin:@//jxr3-scan.jcrew.com:1521/rwmsq1_app.jcrew.com");
+			localPds.setUser("wmsops");
+			localPds.setPassword("o1p2s3wms");
+            //*/
+            
+            /*
+            // options for qa
+            localPds.setURL("jdbc:oracle:thin:@//jxr3-scan.jcrew.com:1521/rwmsq1_app.jcrew.com");
+            localPds.setUser("WMSRO");
+            localPds.setPassword("WMSRO45");
+            */
+			
+			//Setting pool properties
+			localPds.setInitialPoolSize(2);
+			localPds.setMinPoolSize(2);
+			localPds.setMaxPoolSize(20);
+			localPds.setAbandonedConnectionTimeout ( 10 );
+			localPds.setTimeToLiveConnectionTimeout ( 600 );
+			localPds.setConnectionPoolName ( "IntegratedLabelThread" );
+			
+			loggerObj.debug ( "Opening a new DB connection pool" );
+			
+			return localPds;
+		} catch ( SQLException e ) {
+			loggerObj.error( "Error trying initialize Connection Pool", e );
 		}
+		
+		return null;
 	}
 }

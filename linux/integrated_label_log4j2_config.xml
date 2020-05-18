@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<Configuration monitorInterval="60">
+  <Properties>
+    <Property name="integratedLabelLogBaseDir">/apps/scope/wms/profile-root/WMSQ/log</Property>
+  </Properties>
+  <Appenders>
+    <RollingFile name="integratedLabelRollingFile" fileName="${integratedLabelLogBaseDir}/integrated_label.log"
+                 filePattern="${integratedLabelLogBaseDir}/integratedLabel-%d{yyyyMMdd}-%i.log.gz">
+      <PatternLayout>
+        <Pattern>%d %-5p (%F:%L) - %m%n</Pattern>
+      </PatternLayout>
+      <Policies>
+        <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+        <SizeBasedTriggeringPolicy size="250 MB"/>
+      </Policies>
+    </RollingFile>  
+    <Console name="STDOUT" target="SYSTEM_OUT"> 
+      <PatternLayout pattern="%d %-5p (%F:%L) - %m%n"/> 
+    </Console> 
+  </Appenders> 
+  <Loggers> 
+    <Root level="ERROR">
+    </Root> 
+    <Logger name="integratedLabelPkg" level="ALL" additivity="true">
+    	<AppenderRef ref="integratedLabelRollingFile"/>
+    </Logger>
+  </Loggers> 
+</Configuration>

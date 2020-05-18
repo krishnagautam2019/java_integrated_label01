@@ -7,5 +7,6 @@
 	<classpathentry kind="lib" path="lib/log4j-iostreams-2.3.jar"/>
 	<classpathentry kind="lib" path="lib/ucp.jar"/>
 	<classpathentry kind="lib" path="lib/ojdbc6.jar"/>
+	<classpathentry kind="lib" path="lib/orai18n.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

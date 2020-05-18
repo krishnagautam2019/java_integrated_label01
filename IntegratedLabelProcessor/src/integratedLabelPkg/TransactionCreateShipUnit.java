@@ -134,14 +134,14 @@ public class TransactionCreateShipUnit {
 			try {	
 				if ( dbConn != null ) {
 					if ( v_ship_via != null && !v_ship_via.isEmpty() ) {
-						CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_msgs_gen.jc_scnd_msg_create_ship_via(?,?)}");
+						CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scnadata_itgl_msgs_gen.jc_scnd_msg_create_ship_via(?,?)}");
 						cstmt.registerOutParameter( 1, Types.CLOB );
 						cstmt.setString( 2, v_tc_lpn_id );
 						cstmt.setString( 3, v_ship_via );
 						cstmt.executeUpdate();
 						msgClobData = cstmt.getClob(1);						
 					} else {
-						CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_msgs_gen.jc_scnd_msg_create_ship_via(?)}");
+						CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scnadata_itgl_msgs_gen.jc_scnd_msg_create_ship_via(?)}");
 						cstmt.registerOutParameter( 1, Types.CLOB );
 						cstmt.setString( 2, v_tc_lpn_id );
 						cstmt.executeUpdate();

@@ -55,10 +55,11 @@ public class TransactionPrintShipLabel {
 		String v_label_url = get_label_url_from_db( tc_lpn_id );
 		loggerObj.debug( "response from db for label data : " + v_label_url );
 		
-		
-		if ( v_label_url.substring(0,4).contentEquals( "http" ) ) {
+		if ( v_label_url.length() <= 1 && v_label_url.contentEquals( "0" ) ) {
+			errorCode = 1;
+		} else if ( v_label_url.substring(0,4).contentEquals( "http" ) ) {
 			errorCode = 0;
-		} else if ( v_label_url.substring(1,4).contentEquals( "0" ) ) {
+		} else if ( v_label_url.substring(1,4).contentEquals( "0000" ) ) {
 			errorCode = 1;
 		} else if ( v_label_url.contentEquals( tc_lpn_id ) ) {
 			//so no tracking nbr or a label exists 
@@ -192,13 +193,15 @@ public class TransactionPrintShipLabel {
 				resultStringBuilder.append(inputLine).append("\n");
 			}
 			
+			br.close();
+			
 			labeldata = resultStringBuilder.toString();
 			return labeldata;
 		} catch ( MalformedURLException e ) {
 			loggerObj.error( "Error in retriving label from scandata.\n", e );
 		} catch ( IOException e ) {
 			loggerObj.error( "Error in retriving label from scandata.\n", e );
-		}
+		} 
 		
 		return labeldata;
 	}
