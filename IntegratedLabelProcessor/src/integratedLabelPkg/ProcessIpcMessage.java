@@ -64,6 +64,9 @@ public class ProcessIpcMessage implements Runnable {
 		} else if ( msgType.equals( "CancelShipUnit" ) ) {
 			loggerObj.trace( "Processing msgType " + msgType + " for : " + msgValue );
 			processCancelShipUnit( msgValue );
+		} else if ( msgType.equals( "UpgradeShipUnit" ) ) {
+			loggerObj.trace( "Processing msgType " + msgType + " for : " + msgValue );
+			processUpgradeShipUnit( msgValue );
 		} else if ( msgType.equals( "GetShipUnitLabel" ) ) {
 			loggerObj.trace( "Processing msgType " + msgType + " for : " + msgValue );
 			processGetShipUnitLabel( msgValue );
@@ -131,6 +134,12 @@ public class ProcessIpcMessage implements Runnable {
 		loggerObj.debug( "Process CancelShipUnits : " + v_tc_lpn_id );
 		TransactionCancelShipUnit csu = new TransactionCancelShipUnit( pds, loggerObj, scv, v_tc_lpn_id );
 		csu.cancelShipUnitMsgScandata();
+	}
+
+	private void processUpgradeShipUnit ( String v_tc_lpn_id ) {
+		loggerObj.debug( "Process UpgradeShipUnits : " + v_tc_lpn_id );
+		TransactionUpgradeShipUnit usu = new TransactionUpgradeShipUnit( pds, loggerObj, scv, v_tc_lpn_id );
+		usu.upgradeShipUnitMsgScandata();
 	}
 
 	private void processPrintShipLabelForCarton ( String v_tc_lpn_id, String v_printer_name ) {

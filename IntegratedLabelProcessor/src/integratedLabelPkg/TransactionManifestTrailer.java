@@ -48,11 +48,12 @@ public class TransactionManifestTrailer {
 	}
 	
 	public void manifestTrailerMsgScandata ( int loadMsgs ) {
-		loggerObj.debug( "Process manifest Trailer : " + tc_shipment_id );
+		loggerObj.info( this.tc_shipment_id + " : Process manifest Trailer." );
+		loggerObj.info( this.tc_shipment_id + " : loadMsgs parameter value " + loadMsgs );
 		
 		//if cartons are not already loaded then go ahead and load them.
 		if (loadMsgs == 0) {
-			//loggerObj.debug( "Process Load Trail : " + tc_shipment_id );
+			//loggerObj.info( "Process Load Trail : " + tc_shipment_id );
 			TransactionLoadShipUnitsForTrailer gsl = new TransactionLoadShipUnitsForTrailer( pds, loggerObj, scv, tc_shipment_id );
 			gsl.processLoadShipUnitsForTrailer();
 		}
@@ -89,22 +90,22 @@ public class TransactionManifestTrailer {
 	        manifestTrailerProcessResponse( soap_response, tc_shipment_id );
 	        //System.out.println( labelUrl );
 		} catch ( UnsupportedOperationException e ) {
-			loggerObj.error ( "Soap message communication issue.\n", e );
+			loggerObj.error ( this.tc_shipment_id + " : Soap message communication issue.\n", e );
 		} catch (SOAPException e) {
-			loggerObj.error ( "Soap message communication issue.\n", e );
+			loggerObj.error ( this.tc_shipment_id + " : Soap message communication issue.\n", e );
 		} catch (MalformedURLException e) {
-			loggerObj.error ( "Soap message communication issue.\n", e );
+			loggerObj.error ( this.tc_shipment_id + " : Soap message communication issue.\n", e );
 		} catch (IOException e) {
-			loggerObj.error ( "Soap message communication issue.\n", e );
+			loggerObj.error ( this.tc_shipment_id + " : Soap message communication issue.\n", e );
 		} catch (Exception e) {
-			loggerObj.error ( "Soap message communication issue.\n", e );
+			loggerObj.error ( this.tc_shipment_id + " : Soap message communication issue.\n", e );
 		}
 		
 	}
 
 	private SOAPMessage manifestTrailerCreateRequest ( String v_tc_shipment_id ) {
 		
-		loggerObj.debug( "manifestTrailerCreateRequest for : " + v_tc_shipment_id );
+		loggerObj.info( v_tc_shipment_id + " : manifestTrailerCreateRequest." );
 		
 		try {
 			MessageFactory messageFactory = MessageFactory.newInstance();
@@ -119,9 +120,9 @@ public class TransactionManifestTrailer {
 	        return soapMessage;
 	        
 		} catch ( SOAPException e ) {
-			loggerObj.error( "Soap exception.\n", e );
+			loggerObj.error( v_tc_shipment_id + " : Soap exception.\n", e );
 		} catch ( Exception e ) {
-			loggerObj.error( "Soap exception.\n", e );
+			loggerObj.error( v_tc_shipment_id + " : Soap exception.\n", e );
 		}
 		
 		return null;
@@ -129,7 +130,7 @@ public class TransactionManifestTrailer {
 
 	private String manifestTrailerGetMsgData ( String v_tc_shipment_id ) {
 		
-		loggerObj.debug( "manifestTrailerGetMsgData for : " + v_tc_shipment_id );
+		loggerObj.info( v_tc_shipment_id + " : manifestTrailerGetMsgData" );
 		
 		try {
 			Connection dbConn = pds.getConnection();
@@ -137,7 +138,7 @@ public class TransactionManifestTrailer {
 			
 			try {	
 				if ( dbConn != null ) {
-					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scnadata_itgl_msgs_gen.jc_scnd_msg_manifest_trlr(?)}");
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_itgl_msgs_gen.jc_scnd_msg_manifest_trlr(?)}");
 					cstmt.registerOutParameter( 1, Types.CLOB );
 					cstmt.setString( 2, v_tc_shipment_id );
 					cstmt.executeUpdate();
@@ -154,17 +155,17 @@ public class TransactionManifestTrailer {
 			//System.out.println( Convertor.convertClobToString( msgClobData ) );
 			return Convertor.convertClobToString( msgClobData );
 		} catch ( SQLException e ) {
-			loggerObj.error( "Statement execute error.\n", e );
+			loggerObj.error( this.tc_shipment_id + " : Statement execute error jc_scnd_msg_manifest_trlr.\n", e );
 		} catch ( Exception e ) {
-			loggerObj.error( "Statement execute error.\n", e );
+			loggerObj.error( this.tc_shipment_id + " : Statement execute error jc_scnd_msg_manifest_trlr.\n", e );
 		}
 		return null;
 	}
 	
 private void manifestTrailerProcessResponse ( String v_soap_response, String v_tc_shipment_id ) {
 		
-		loggerObj.debug( "manifestTrailerProcessResponse" );
-		loggerObj.trace( "v_soap_response" + v_soap_response );
+		loggerObj.info( "manifestTrailerProcessResponse" );
+		loggerObj.debug( "v_soap_response" + v_soap_response );
 		
 		try {
 			Connection dbConn = pds.getConnection();
@@ -194,7 +195,7 @@ private void manifestTrailerProcessResponse ( String v_soap_response, String v_t
 				}
 			}
 		} catch ( SQLException e ) {
-			loggerObj.error( "Statement execute error.\n", e );
+			loggerObj.error( this.tc_shipment_id + " : Statement execute error process_manifest_trlr_reponse.\n", e );
 		}
 	}
 

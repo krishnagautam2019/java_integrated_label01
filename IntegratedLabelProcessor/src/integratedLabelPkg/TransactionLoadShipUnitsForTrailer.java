@@ -67,7 +67,7 @@ public class TransactionLoadShipUnitsForTrailer {
 	
 	private int get_invoiced_cartons_for_shipment ( String v_tc_shipment_id ) {
 		
-		loggerObj.debug( "get_invoiced_cartons_for_shipment for : " + v_tc_shipment_id );
+		loggerObj.info( v_tc_shipment_id + " : get_invoiced_cartons_for_shipment" );
 		
 		int v_carton_count = 0;
 		
@@ -83,7 +83,7 @@ public class TransactionLoadShipUnitsForTrailer {
 					v_carton_count = cstmt.getInt(1);
 				}
 			} catch ( SQLException e ) {
-				loggerObj.error ( "Unable to get cstmt to execute.\n", e );
+				loggerObj.error ( this.tc_shipment_id + " : Unable to get cstmt to execute get_invoiced_carton_count.\n", e );
 			} finally {
 				if ( dbConn != null) {
 					dbConn.close();
@@ -91,11 +91,11 @@ public class TransactionLoadShipUnitsForTrailer {
 				}
 			}
 			
-			//loggerObj.trace ( clobToString( msgClobData ) );
+			//loggerObj.debug ( clobToString( msgClobData ) );
 			return v_carton_count;
 		
 		} catch ( SQLException e1 ) {
-			loggerObj.error ( "Unable to execute statement.\n", e1 );
+			loggerObj.error ( this.tc_shipment_id + " : Unable to execute statement.\n", e1 );
 		}
 
 		return v_carton_count;
@@ -103,7 +103,7 @@ public class TransactionLoadShipUnitsForTrailer {
 
 	private int load_all_cartons_in_scandata( String v_tc_shipment_id, int v_total_lpn_count, int v_max_cartons_in_request ) {
 		
-		loggerObj.debug( "load_all_cartons_in_scandata for : " + v_tc_shipment_id );
+		loggerObj.info( this.tc_shipment_id + ": load_all_cartons_in_scandata" );
 		
 		int total_msgs = (int) Math.ceil(( (double) v_total_lpn_count )/v_max_cartons_in_request);
 		int loaded_cartons = 0;
@@ -130,7 +130,7 @@ public class TransactionLoadShipUnitsForTrailer {
 	
 	private String load_ship_units_msg_scandata( String v_tc_shipment_id, int msg_part ) {
         
-		loggerObj.debug( "loadShipUnitCreateRequest for : " + v_tc_shipment_id + ", part : " + msg_part );
+		loggerObj.info( v_tc_shipment_id + " : part : " + msg_part + " loadShipUnitCreateRequest" );
 		
 		URL url;
         
@@ -163,15 +163,15 @@ public class TransactionLoadShipUnitsForTrailer {
 	        //loadShipUnitProcessResponse( soap_response );
 	        //System.out.println( labelUrl );
 		} catch ( UnsupportedOperationException e ) {
-			loggerObj.error ( "Soap message communication issue.\n", e );
+			loggerObj.error ( this.tc_shipment_id + " : Soap message communication issue.\n", e );
 		} catch (SOAPException e) {
-			loggerObj.error ( "Soap message communication issue.\n", e );
+			loggerObj.error ( this.tc_shipment_id + " : Soap message communication issue.\n", e );
 		} catch (MalformedURLException e) {
-			loggerObj.error ( "Soap message communication issue.\n", e );
+			loggerObj.error ( this.tc_shipment_id + " : Soap message communication issue.\n", e );
 		} catch (IOException e) {
-			loggerObj.error ( "Soap message communication issue.\n", e );
+			loggerObj.error ( this.tc_shipment_id + " : Soap message communication issue.\n", e );
 		} catch (Exception e) {
-			loggerObj.error ( "Soap message communication issue.\n", e );
+			loggerObj.error ( this.tc_shipment_id + " : Soap message communication issue.\n", e );
 		}		
 	
 		return "0";
@@ -179,7 +179,7 @@ public class TransactionLoadShipUnitsForTrailer {
 
 	private SOAPMessage loadShipUnitCreateRequest ( String v_tc_shipment_id, int msg_part ) {
 		
-		loggerObj.debug( "loadShipUnitCreateRequest for : " + v_tc_shipment_id + ", part : " + msg_part );
+		loggerObj.info( this.tc_shipment_id + " :, part : " + "msg_part : " + msg_part + "\n" + "loadShipUnitCreateRequest" );
 		
 		try {
 			MessageFactory messageFactory = MessageFactory.newInstance();
@@ -194,9 +194,9 @@ public class TransactionLoadShipUnitsForTrailer {
 	        return soapMessage;
 	        
 		} catch ( SOAPException e ) {
-			loggerObj.error ( "Soap message communication issue.\n", e );
+			loggerObj.error ( this.tc_shipment_id + " : Soap message communication issue.\n", e );
 		} catch (Exception e) {
-			loggerObj.error ( "Soap message communication issue.\n", e );
+			loggerObj.error ( this.tc_shipment_id + " : Soap message communication issue.\n", e );
 		}
 		
 		return null;
@@ -204,7 +204,7 @@ public class TransactionLoadShipUnitsForTrailer {
 
 	private String loadShipUnitGetMsgData ( String v_tc_shipment_id, int msg_part ) {
 		
-		loggerObj.debug( "loadShipUnitGetMsgData for : " + v_tc_shipment_id + ", part : " + msg_part );
+		loggerObj.info( this.tc_shipment_id + " :, part : " + "msg_part : " + msg_part + "\n" + "loadShipUnitGetMsgData." );
 		
 		try {
 			Connection dbConn = pds.getConnection();
@@ -212,7 +212,7 @@ public class TransactionLoadShipUnitsForTrailer {
 			
 			try {	
 				if ( dbConn != null ) {
-					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scnadata_itgl_msgs_gen.jc_scnd_msg_load_ship(?,?)}");
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_itgl_msgs_gen.jc_scnd_msg_load_ship(?,?)}");
 					cstmt.registerOutParameter( 1, Types.CLOB );
 					cstmt.setString( 2, v_tc_shipment_id );
 					cstmt.setInt( 3, msg_part );
@@ -220,7 +220,7 @@ public class TransactionLoadShipUnitsForTrailer {
 					msgClobData = cstmt.getClob(1);
 				}
 			} catch ( SQLException e ) {
-				loggerObj.error( "Error in data retrival.\n", e );
+				loggerObj.error( this.tc_shipment_id + " : Error in data retrival jc_scnd_msg_load_ship.\n", e );
 			} finally {
 				if ( dbConn != null) {
 					dbConn.close();
@@ -230,17 +230,17 @@ public class TransactionLoadShipUnitsForTrailer {
 			//System.out.println( clobToString( msgClobData ) );
 			return Convertor.convertClobToString( msgClobData );
 		} catch ( SQLException e ) {
-			loggerObj.error( "Error in data retrival.\n", e );
+			loggerObj.error( this.tc_shipment_id + " : Error in data retrival jc_scnd_msg_load_ship.\n", e );
 		} catch ( Exception e ) {
-			loggerObj.error( "Error in data retrival.\n", e );
+			loggerObj.error( this.tc_shipment_id + " : Error in data retrival jc_scnd_msg_load_ship.\n", e );
 		}
 		return null;
 	}
 
 	private int loadShipUnitProcessResponse ( String v_soap_response, String v_shipment_part ) {
 		
-		loggerObj.debug( "loadShipUnitProcessResponse" );
-		loggerObj.trace( v_soap_response );
+		loggerObj.info(  this.tc_shipment_id + " :, part : " + "v_shipment_part : " + v_shipment_part + "\n" + "loadShipUnitProcessResponse" );
+		loggerObj.debug( this.tc_shipment_id + " :, part : " + "v_shipment_part : " + v_shipment_part + "\n" + v_soap_response );
 		
 		int v_loaded_cartons_in_msg = 0;
 		
@@ -265,7 +265,7 @@ public class TransactionLoadShipUnitsForTrailer {
 				}
 			}
 		} catch ( SQLException e ) {
-			loggerObj.error( "SQL Error.\n", e );
+			loggerObj.error( this.tc_shipment_id + " :, part : " + "v_shipment_part : " + v_shipment_part + " : SQL Error in process_load_ship_reponse.\n", e );
 		}
 		
 		return v_loaded_cartons_in_msg;

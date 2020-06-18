@@ -50,22 +50,50 @@ public class TransactionPrintShipLabel {
 	}
 	
 	public void printShipLabel () {
-		loggerObj.debug( "printShipLabel : " + tc_lpn_id );
+		loggerObj.info( tc_lpn_id + " : printShipLabel"  );
 		
+		//lets check if the carton already has a label
 		String v_label_url = get_label_url_from_db( tc_lpn_id );
-		loggerObj.debug( "response from db for label data : " + v_label_url );
+		loggerObj.debug( tc_lpn_id + " : response from db for label data : " + v_label_url );
 		
+		//if no data is returned from the database then
 		if ( v_label_url.length() <= 1 && v_label_url.contentEquals( "0" ) ) {
 			errorCode = 1;
+			
+		//if a actual label url is available from the database
 		} else if ( v_label_url.substring(0,4).contentEquals( "http" ) ) {
 			errorCode = 0;
-		} else if ( v_label_url.substring(1,4).contentEquals( "0000" ) ) {
-			errorCode = 1;
-		} else if ( v_label_url.contentEquals( tc_lpn_id ) ) {
-			//so no tracking nbr or a label exists 
-			//create a new request to scandata
-			loggerObj.debug( "Label doesn't exist for carton: " + tc_lpn_id + ". get the ship via for the carton." );
+
+			//checking if an upgrade is warranted
 			String ship_via = get_ship_via_for_carton( tc_lpn_id );
+			loggerObj.info( tc_lpn_id + " : checking for upgrade. reported ship_via : " + ship_via );
+			
+			if ( ship_via.contentEquals( "UGRD" ) ) {
+				loggerObj.debug( tc_lpn_id + " : Inititing new UpgradeShipUnit transaction with scandata for carton." );
+				
+				TransactionUpgradeShipUnit usu = new TransactionUpgradeShipUnit( pds, loggerObj, scv, tc_lpn_id, ship_via );
+				usu.upgradeShipUnitMsgScandata();
+				if ( usu.errorCode == 0 ) {
+					loggerObj.debug( tc_lpn_id + " : upgrade perfromed successfully." );
+					errorCode = 0;
+					v_label_url = usu.labelUrl;
+				} else {
+					//print the error happened label
+					loggerObj.info ( tc_lpn_id + " : had error during upgrade with errorcode : " + usu.errorCode );
+					errorCode = 2;
+				}
+			}
+		//this data condition is fulfilled by coalesce( l1.tracking_nbr, l1.tc_lpn_id, '0000' )
+		} else if ( v_label_url.substring(1,4).contentEquals( "0000" ) ) {
+			errorCode = 3;
+		
+		//so no tracking nbr or a label exists
+		//create a new request to scandata
+		} else if ( v_label_url.contentEquals( tc_lpn_id ) ) {
+			loggerObj.info( tc_lpn_id + " : Label doesn't exist for carton. get the ship via for the carton." );
+			
+			String ship_via = get_ship_via_for_carton( tc_lpn_id );
+			loggerObj.debug( tc_lpn_id + " : ship_via for carton is :" + ship_via );
 			
 			if ( ship_via.contentEquals( "ERRR" ) ) {
 				//print error label
@@ -81,15 +109,40 @@ public class TransactionPrintShipLabel {
 				return;				
 			} else if ( ship_via.contentEquals( "INTL" ) ) {
 				//print error label
-				String labelData = get_label_err_international(tc_lpn_id);
+				String labelData = get_label_international_carton(tc_lpn_id);
+				print_label_to_printer( labelData, printer_name );
+				return;				
+			} else if ( ship_via.contentEquals( "CLSD" ) ) {
+				//print error label
+				String labelData = get_label_closed_store(tc_lpn_id);
+				print_label_to_printer( labelData, printer_name );
+				return;				
+			} else if ( ship_via.contentEquals( "NSTR" ) ) {
+				//print error label
+				String labelData = get_label_new_store(tc_lpn_id);
 				print_label_to_printer( labelData, printer_name );
 				return;				
 			}  else if ( ship_via.contentEquals( "DFLT" ) ) {
 				//print error label
-				String labelData = get_label_err_generic(tc_lpn_id);
+				String labelData = get_label_err_generic(tc_lpn_id, "Ship via retruned as DFLT, contact WMS Support");
 				print_label_to_printer( labelData, printer_name );
-				return;				
+				return;
+			} else if ( ship_via.contentEquals( "UGRD" ) ) {
+				loggerObj.info( "Inititing new UpgradeShipUnit transaction with scandata for carton :" + tc_lpn_id + " , ship_via :  " + ship_via );
+				
+				TransactionUpgradeShipUnit usu = new TransactionUpgradeShipUnit( pds, loggerObj, scv, tc_lpn_id, ship_via );
+				usu.upgradeShipUnitMsgScandata();
+				if ( usu.errorCode == 0 ) {
+					errorCode = 0;
+					v_label_url = usu.labelUrl;
+				} else {
+					//print the error happened label
+					errorCode = 2;
+					loggerObj.info ( "Carton : " + tc_lpn_id + " had error " + usu.errorCode );
+				}
 			} else {
+				loggerObj.info( "Inititing new CreateShipUnit transaction with scandata for carton :" + tc_lpn_id + " , ship_via :  " + ship_via );
+				
 				TransactionCreateShipUnit csu = new TransactionCreateShipUnit( pds, loggerObj, scv, tc_lpn_id, ship_via );
 				csu.createShipUnitMsgScandata();
 				if ( csu.errorCode == 0 ) {
@@ -97,8 +150,8 @@ public class TransactionPrintShipLabel {
 					v_label_url = csu.labelUrl;
 				} else {
 					//print the error happened label
-					errorCode = 2;
-					loggerObj.debug ( "Carton : " + tc_lpn_id + " had error " + csu.errorCode );
+					errorCode = 4;
+					loggerObj.info ( "Carton : " + tc_lpn_id + " had error " + csu.errorCode );
 				}
 			}
 		} else if ( ( ! v_label_url.contentEquals( "0" ) ) && ( ! v_label_url.substring(0,4).contentEquals( "http" ) ) ) {
@@ -111,8 +164,8 @@ public class TransactionPrintShipLabel {
 				v_label_url = gsu.labelUrl;
 			} else {
 				//print the error happened label
-				errorCode = 3;
-				loggerObj.debug ( "Carton : " + tc_lpn_id + " had error " + gsu.errorCode );
+				errorCode = 5;
+				loggerObj.info ( "Carton : " + tc_lpn_id + " had error " + gsu.errorCode );
 			}
 		}
 		 
@@ -123,16 +176,28 @@ public class TransactionPrintShipLabel {
 			labelData = get_label_data_from_scandata( v_label_url );
 		} else if ( errorCode == 1 ) {
 			//print carton doesn't exists label
-			loggerObj.debug ( "Carton doesn't exist : " + tc_lpn_id + ", errorCode : " + errorCode );
+			loggerObj.info ( tc_lpn_id + " : function get_label_url_from_db didnt return any data, errorCode : " + errorCode );
+			labelData = get_label_err_generic(tc_lpn_id, tc_lpn_id + " Print errorCode : " + errorCode + ". Contact WMS Support");
 		} else if ( errorCode == 2 ) {
 			//print can't create ship unit label
-			loggerObj.debug ( "Carton doesn't exist : " + tc_lpn_id + ", errorCode : " + errorCode );
+			loggerObj.info ( tc_lpn_id + " : error occured during upgrade transaction, errorCode : " + errorCode );
+			labelData = get_label_err_generic(tc_lpn_id, tc_lpn_id + " Print errorCode : " + errorCode + ". Contact WMS Support");
 		} else if ( errorCode == 3 ) {
 			//print can't retrieve label data from scandata
-			loggerObj.debug ( "Carton doesn't exist : " + tc_lpn_id + ", errorCode : " + errorCode );
+			loggerObj.info ( tc_lpn_id + " : function get_label_url_from_db returned 0000, errorCode : " + errorCode );
+			labelData = get_label_err_generic(tc_lpn_id, tc_lpn_id + " Print errorCode : " + errorCode + ". Contact WMS Support");
+		} else if ( errorCode == 4 ) {
+			//print can't retrieve label data from scandata
+			loggerObj.info ( tc_lpn_id + " : error occured during create ship unit transaction, errorCode : " + errorCode );
+			labelData = get_label_err_generic(tc_lpn_id, tc_lpn_id + " Print errorCode : " + errorCode + ". Contact WMS Support");
+		} else if ( errorCode == 5 ) {
+			//print can't retrieve label data from scandata
+			loggerObj.info ( tc_lpn_id + " : error occured during get ship label transaction, errorCode : " + errorCode );
+			labelData = get_label_err_generic(tc_lpn_id, tc_lpn_id + " Print errorCode : " + errorCode + ". Contact WMS Support");
 		} else {
 			//undefined error happened 
-			loggerObj.debug ( "Carton doesn't exist : " + tc_lpn_id + ", errorCode : " + errorCode );
+			loggerObj.info ( tc_lpn_id + " : unhandled error occured trying to generate carton label, errorCode : " + errorCode );
+			labelData = get_label_err_generic(tc_lpn_id, tc_lpn_id + " Print errorCode : " + errorCode + ". Contact WMS Support");
 		}
 		
 		//print the label
@@ -143,7 +208,7 @@ public class TransactionPrintShipLabel {
 	
 	private String get_label_url_from_db ( String v_tc_lpn_id ) {
 		
-		loggerObj.debug( "get_label_url_from_db : " + v_tc_lpn_id );
+		loggerObj.info( v_tc_lpn_id + " : get_label_url_from_db" );
 		
 		try {
 			Connection dbConn = pds.getConnection();
@@ -168,14 +233,14 @@ public class TransactionPrintShipLabel {
 			//System.out.println( clobToString( msgClobData ) );
 			return labelUrl;
 		} catch ( SQLException e ) {
-			loggerObj.error( "Issue with executing SQL statement.\n", e );
+			loggerObj.error( this.tc_lpn_id + " :Issue with executing SQL function get_label_url_for_carton.\n", e );
 		}
 		return null;		
 	}
 
 	private String get_label_data_from_scandata( String v_label_url ) {
 		
-		loggerObj.debug( "Trying to retrieve label data for : " + v_label_url );
+		loggerObj.info( this.tc_lpn_id + " : Trying to retrieve label data for : " + v_label_url );
 		
 		String labeldata = new String();
 		
@@ -198,9 +263,9 @@ public class TransactionPrintShipLabel {
 			labeldata = resultStringBuilder.toString();
 			return labeldata;
 		} catch ( MalformedURLException e ) {
-			loggerObj.error( "Error in retriving label from scandata.\n", e );
+			loggerObj.error( this.tc_lpn_id + " :Error in retriving label from scandata.\n", e );
 		} catch ( IOException e ) {
-			loggerObj.error( "Error in retriving label from scandata.\n", e );
+			loggerObj.error( this.tc_lpn_id + " :Error in retriving label from scandata.\n", e );
 		} 
 		
 		return labeldata;
@@ -208,8 +273,8 @@ public class TransactionPrintShipLabel {
 
 	private void print_label_to_printer( String labelData, String v_printer_name ) {
 		
-		loggerObj.debug( "Printer the label data on : " + v_printer_name );
-		loggerObj.trace( "label Data is : \n" + labelData );
+		loggerObj.info( "Print the label data on : " + v_printer_name );
+		loggerObj.debug( "label Data is : \n" + labelData );
 		
 		try {
 			InputStream is = new ByteArrayInputStream(labelData.getBytes("UTF8"));
@@ -225,19 +290,19 @@ public class TransactionPrintShipLabel {
 			job.print( doc, aset );
 			
 			is.close();
-			loggerObj.debug( "Printing completed." );
+			loggerObj.info( this.tc_lpn_id + " : Printing completed." );
 		} catch ( UnsupportedEncodingException e ) {
-			loggerObj.error( "Printing error. \n", e );
+			loggerObj.error( this.tc_lpn_id + " : Printing error. \n", e );
 		} catch ( PrintException e ) {
-			loggerObj.error( "Printing error. \n", e );
+			loggerObj.error( this.tc_lpn_id + " : Printing error. \n", e );
 		} catch ( IOException e ) {
-			loggerObj.error( "Printing error. \n", e );
+			loggerObj.error( this.tc_lpn_id + " : Printing error. \n", e );
 		}
 	}
 
 	private String get_ship_via_for_carton ( String v_tc_lpn_id ) {
 		
-		loggerObj.debug( "get_ship_via_for_carton : " + v_tc_lpn_id );
+		loggerObj.info( "get_ship_via_for_carton : " + v_tc_lpn_id );
 		
 		try {
 			Connection dbConn = pds.getConnection();
@@ -262,20 +327,20 @@ public class TransactionPrintShipLabel {
 			//System.out.println( clobToString( msgClobData ) );
 			return ship_via;
 		} catch ( SQLException e ) {
-			loggerObj.error( "Issue with executing SQL statement.\n", e );
+			loggerObj.error( v_tc_lpn_id + " : Issue with executing SQL function get_ship_via_for_carton.\n", e );
 		}
 		return null;		
 	}
 	
 	private String get_label_err_loaded ( String v_tc_lpn_id ) {
-		loggerObj.debug( "get_ship_via_for_carton : " + v_tc_lpn_id );
+		loggerObj.info( v_tc_lpn_id + "is already loaded; genrating error label." );
 		
 		String label_data = "^XA^XZ";
 		try {
 			Connection dbConn = pds.getConnection();
 			try {	
 				if ( dbConn != null ) {
-					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_gen_labels.jc_scnd_gen_err_lbl_loaded(?)}");
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_gen_labels.jc_scnd_gen_lbl_loaded(?)}");
 					cstmt.registerOutParameter( 1, Types.VARCHAR );
 					cstmt.setString( 2, v_tc_lpn_id );
 					cstmt.executeUpdate();
@@ -292,20 +357,20 @@ public class TransactionPrintShipLabel {
 			//System.out.println( clobToString( msgClobData ) );
 			return label_data;
 		} catch ( SQLException e ) {
-			loggerObj.error( "Issue with executing SQL statement.\n", e );
+			loggerObj.error( v_tc_lpn_id + " : Issue with executing SQL function jc_scnd_gen_lbl_loaded.\n", e );
 		}
 		return label_data;		
 	}
 
 	private String get_label_err_shipped ( String v_tc_lpn_id ) {
-		loggerObj.debug( "get_ship_via_for_carton : " + v_tc_lpn_id );
+		loggerObj.info( v_tc_lpn_id + "is already shipped; genrating error label." );
 		
 		String label_data = "^XA^XZ";
 		try {
 			Connection dbConn = pds.getConnection();
 			try {	
 				if ( dbConn != null ) {
-					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_gen_labels.jc_scnd_gen_err_lbl_shipped(?)}");
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_gen_labels.jc_scnd_gen_lbl_shipped(?)}");
 					cstmt.registerOutParameter( 1, Types.VARCHAR );
 					cstmt.setString( 2, v_tc_lpn_id );
 					cstmt.executeUpdate();
@@ -322,20 +387,20 @@ public class TransactionPrintShipLabel {
 			//System.out.println( clobToString( msgClobData ) );
 			return label_data;
 		} catch ( SQLException e ) {
-			loggerObj.error( "Issue with executing SQL statement.\n", e );
+			loggerObj.error( v_tc_lpn_id + " : Issue with executing SQL function jc_scnd_gen_lbl_shipped.\n", e );
 		}
 		return label_data;		
 	}
 	
-	private String get_label_err_international ( String v_tc_lpn_id ) {
-		loggerObj.debug( "get_ship_via_for_carton : " + v_tc_lpn_id );
+	private String get_label_international_carton ( String v_tc_lpn_id ) {
+		loggerObj.info( v_tc_lpn_id + "is a international carton; cannot generate inetegrated label fot it. Carton needs to be on a statndard UPS inetrnational ship_via." );
 		
 		String label_data = "^XA^XZ";
 		try {
 			Connection dbConn = pds.getConnection();
 			try {	
 				if ( dbConn != null ) {
-					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_gen_labels.jc_scnd_gen_err_lbl_intl(?)}");
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_gen_labels.jc_scnd_gen_lbl_intl(?)}");
 					cstmt.registerOutParameter( 1, Types.VARCHAR );
 					cstmt.setString( 2, v_tc_lpn_id );
 					cstmt.executeUpdate();
@@ -352,14 +417,79 @@ public class TransactionPrintShipLabel {
 			//System.out.println( clobToString( msgClobData ) );
 			return label_data;
 		} catch ( SQLException e ) {
-			loggerObj.error( "Issue with executing SQL statement.\n", e );
+			loggerObj.error( v_tc_lpn_id + " : Issue with executing SQL function jc_scnd_gen_lbl_intl.\n", e );
 		}
 		return label_data;		
 	}
 
-	private String get_label_err_generic ( String v_tc_lpn_id ) {
-		loggerObj.debug( "get_ship_via_for_carton : " + v_tc_lpn_id );
+	
+	private String get_label_closed_store ( String v_tc_lpn_id ) {
+		loggerObj.info( v_tc_lpn_id + "is a carton for a closed store; carton assigned to route CL." );
 		
+		String label_data = "^XA^XZ";
+		try {
+			Connection dbConn = pds.getConnection();
+			try {	
+				if ( dbConn != null ) {
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_gen_labels.jc_scnd_gen_lbl_clsd_store(?)}");
+					cstmt.registerOutParameter( 1, Types.VARCHAR );
+					cstmt.setString( 2, v_tc_lpn_id );
+					cstmt.executeUpdate();
+					label_data = cstmt.getString(1);
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {
+				if ( dbConn != null) {
+					dbConn.close();
+					dbConn = null;
+				}
+			}
+			//System.out.println( clobToString( msgClobData ) );
+			return label_data;
+		} catch ( SQLException e ) {
+			loggerObj.error( v_tc_lpn_id + " : Issue with executing SQL function jc_scnd_gen_lbl_clsd_store.\n", e );
+		}
+		return label_data;		
+	}
+
+	private String get_label_new_store ( String v_tc_lpn_id ) {
+		loggerObj.info( v_tc_lpn_id + "is a carton for a new store; Integrated Labels are not generated for them by design." );
+		
+		String label_data = "^XA^XZ";
+		try {
+			Connection dbConn = pds.getConnection();
+			try {	
+				if ( dbConn != null ) {
+					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_gen_labels.jc_scnd_gen_lbl_new_store(?)}");
+					cstmt.registerOutParameter( 1, Types.VARCHAR );
+					cstmt.setString( 2, v_tc_lpn_id );
+					cstmt.executeUpdate();
+					label_data = cstmt.getString(1);
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {
+				if ( dbConn != null) {
+					dbConn.close();
+					dbConn = null;
+				}
+			}
+			//System.out.println( clobToString( msgClobData ) );
+			return label_data;
+		} catch ( SQLException e ) {
+			loggerObj.error( v_tc_lpn_id + " : Issue with executing SQL function jc_scnd_gen_lbl_new_store.\n", e );
+		}
+		return label_data;		
+	}
+
+	private String get_label_err_generic ( String v_tc_lpn_id, String labelErrorMsg ) {
+		loggerObj.info( v_tc_lpn_id + " : encountered an unidentified error during integrated label generation. Generating generic error label." );
+		
+		String labelErrorMsg2 = labelErrorMsg;
+		if ( labelErrorMsg == null || labelErrorMsg.length() == 0 ){
+			labelErrorMsg2 = "unkown error; contact wms support";
+		}
 		String label_data = "^XA^XZ";
 		try {
 			Connection dbConn = pds.getConnection();
@@ -368,7 +498,7 @@ public class TransactionPrintShipLabel {
 					CallableStatement cstmt = dbConn.prepareCall("{? = call wmsops.jc_scandata_gen_labels.jc_scnd_gen_err_lbl_generic(?,?)}");
 					cstmt.registerOutParameter( 1, Types.VARCHAR );
 					cstmt.setString( 2, v_tc_lpn_id );
-					cstmt.setString( 3, "unkown error; contact wms support" );
+					cstmt.setString( 3, labelErrorMsg2 );
 					cstmt.executeUpdate();
 					label_data = cstmt.getString(1);
 				}
@@ -383,8 +513,9 @@ public class TransactionPrintShipLabel {
 			//System.out.println( clobToString( msgClobData ) );
 			return label_data;
 		} catch ( SQLException e ) {
-			loggerObj.error( "Issue with executing SQL statement.\n", e );
+			loggerObj.error( v_tc_lpn_id + " : Issue with executing SQL function jc_scnd_gen_err_lbl_generic.\n", e );
 		}
 		return label_data;		
 	}
+	
 }
