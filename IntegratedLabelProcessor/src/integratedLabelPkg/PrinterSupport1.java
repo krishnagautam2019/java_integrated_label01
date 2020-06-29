@@ -4,16 +4,16 @@ import javax.print.DocFlavor;
 import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
 
-public class PrinterSupport {
+public class PrinterSupport1 {
 	
 	public PrintService[] printServices;
 	public String[] printerNames;
 	
-	PrinterSupport () {
+	PrinterSupport1 () {
 		initializePrinterVariables();
 	}
 	
-	PrinterSupport ( PrintService[] v_printServices, String[] v_printerNames ) {
+	PrinterSupport1 ( PrintService[] v_printServices, String[] v_printerNames ) {
 		this.printServices = v_printServices;
 		this.printerNames = v_printerNames;
 	}

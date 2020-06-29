@@ -19,10 +19,10 @@ class ScandataCommunicationVariables {
 	
 	public ScandataCommunicationVariables ( ) {
 	    this.W3c_XML_Schema = "http://ScanData.com/WTM/XMLSchemas/WTM_XMLSchema_14.00.0000.xsd";
-	    this.Scandata_WTM_Schema = "http://jwe-rwscna-q01/WTMSERVICE/WTMService.asmx?WSDL";
+	    this.Scandata_WTM_Schema = "http://jwe-rwscna-p01/WTMSERVICE/WTMService.asmx?WSDL";
 	    this.W3c_XML_Schema_Instance = "http://ScanData.com/WTM/XMLSchemas/WTM_XMLSchema_14.00.0000.xsd";
 	    this.Scandata_WTM = "http://ScanData.com/WTM/";
-	    this.Scandata_URL = "http://jwe-rwscna-q01/WTMSERVICE/WTMService.asmx";
+	    this.Scandata_URL = "http://jwe-rwscna-p01/WTMSERVICE/WTMService.asmx";
 	    this.max_cartons_in_request = 100;
 	    //loggerObj.trace ( "New Scandata communication variable created." );
 	}

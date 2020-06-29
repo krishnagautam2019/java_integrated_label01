@@ -20,10 +20,10 @@ class IntegratedLabel_IPC_Thread implements Runnable {
 	private Logger loggerObj;
 	private ExecutorService executor;
 	private ScandataCommunicationVariables scv;
-	private PrinterSupport printers;
+	//private PrinterSupport printers;
     //private static int ipcMaxIdleTime = 3000; //wait maximum 3000 millis
 	
-	IntegratedLabel_IPC_Thread ( Socket socket, int clientNumber, Logger vlogger, PoolDataSource vpds, ExecutorService vexecutor, ScandataCommunicationVariables vscv, PrinterSupport vprinters ) {
+	IntegratedLabel_IPC_Thread ( Socket socket, int clientNumber, Logger vlogger, PoolDataSource vpds, ExecutorService vexecutor, ScandataCommunicationVariables vscv ) {
 		boolean keepAliveToggle = true;
         try {
 			this.loggerObj = vlogger;
@@ -31,7 +31,7 @@ class IntegratedLabel_IPC_Thread implements Runnable {
 			this.clientNumber = clientNumber;
 			this.pds = vpds;
 			this.executor = vexecutor;
-			this.printers = vprinters;
+			//this.printers = vprinters;
 			this.scv = vscv;
 			this.pds = vpds;
 			
@@ -85,7 +85,7 @@ class IntegratedLabel_IPC_Thread implements Runnable {
 					loggerObj.debug( "ipcLine : " + ipcLine );  
                 	
                 	//call the executor service 
-                	Runnable processMsgTask = new ProcessIpcMessage( pds, loggerObj, ipcLine, scv, printers );
+                	Runnable processMsgTask = new ProcessIpcMessage( pds, loggerObj, ipcLine, scv );
       				loggerObj.trace( "Calling insert executor with " + ipcLine );
       				executor.execute( processMsgTask );
                   }

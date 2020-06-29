@@ -26,7 +26,6 @@ import javax.print.attribute.HashPrintRequestAttributeSet;
 import javax.print.attribute.PrintRequestAttributeSet;
 import javax.print.attribute.standard.Copies;
 import javax.print.attribute.standard.JobName;
-import javax.print.attribute.standard.PrinterName;
 
 import org.apache.logging.log4j.Logger;
 
@@ -271,26 +270,30 @@ public class TransactionPrintShipLabel {
 	private void print_label_to_printer( String labelData, String v_printer_name ) {
 		
 		loggerObj.info( "Print the label data on : " + v_printer_name );
-		loggerObj.debug( "label Data is : \n" + labelData );
+		//loggerObj.debug( "label Data is : \n" + labelData );
 		
 		try {
 			InputStream is = new ByteArrayInputStream(labelData.getBytes("UTF8"));
 
-			PrintRequestAttributeSet aset = new HashPrintRequestAttributeSet();
-			aset.add(new PrinterName(v_printer_name, null));
-			aset.add( new JobName( tc_lpn_id + "_integrated_label" , Locale.getDefault() ) );
-			aset.add( new Copies(1) );
-			
-			PrintService service = null;
-			PrintService[] pservices = PrintServiceLookup.lookupPrintServices(null, aset);
-
 			DocFlavor flavor = DocFlavor.INPUT_STREAM.AUTOSENSE;
 			Doc doc = new SimpleDoc(is, flavor, null);
 
+			PrintRequestAttributeSet aset = new HashPrintRequestAttributeSet();
+			//aset.add(new PrinterName(v_printer_name, null));
+			aset.add( new JobName( tc_lpn_id + "_integrated_label" , Locale.getDefault() ) );
+			aset.add( new Copies(1) );
+			
+			PrintService[] pservices = PrintServiceLookup.lookupPrintServices( DocFlavor.SERVICE_FORMATTED.PRINTABLE, null);
+			loggerObj.debug( this.tc_lpn_id + " : Printers deducted " + pservices.length );
+			
 	        // Retrieve a print service from the array
-	        for (int index = 0; service == null && index < pservices.length; index++) {
-
-	            if (pservices[index].getName().toUpperCase().indexOf(v_printer_name) >= 0) {
+			PrintService service = null;
+			for (int index = 0; service == null && index < pservices.length; index++) {
+				
+				//loggerObj.debug( this.tc_lpn_id + " : Printer index trace index " + index + " : " + pservices[index].getName().toUpperCase() );
+	            
+				if (pservices[index].getName().toUpperCase().indexOf(v_printer_name) >= 0) {
+	            	//loggerObj.info( this.tc_lpn_id + " : Printer index is " + index );
 	                service = pservices[index];
 	    			DocPrintJob job = service.createPrintJob();
 	    			job.print( doc, aset );

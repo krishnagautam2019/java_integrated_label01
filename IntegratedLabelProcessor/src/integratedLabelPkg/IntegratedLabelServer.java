@@ -38,7 +38,7 @@ public class IntegratedLabelServer {
         //lets create a new thread pool for processing the inputs received
 		ServerSocket listener = new ServerSocket(37000);
 		ScandataCommunicationVariables scv = new ScandataCommunicationVariables();
-		PrinterSupport printers = new PrinterSupport();
+		//PrinterSupport printers = new PrinterSupport();
         ExecutorService executor = Executors.newFixedThreadPool(10);
         PoolDataSource pds = connectionInit();
         
@@ -53,7 +53,7 @@ public class IntegratedLabelServer {
         
         try {
             while (true) {
-                new IntegratedLabel_IPC_Thread( listener.accept(), clientNumber++, loggerObj, pds, executor, scv, printers ).run();
+                new IntegratedLabel_IPC_Thread( listener.accept(), clientNumber++, loggerObj, pds, executor, scv ).run();
                 loggerObj.info("The server is now listening on port 37000.");
                 
                 if ( clientNumber == 9998 ) {
@@ -82,14 +82,14 @@ public class IntegratedLabelServer {
 			
             ///*
             //options for prod
-			localPds.setURL("jdbc:oracle:thin:@//jxr3-scan.jcrew.com:1521/rwmsq1_app.jcrew.com");
+			localPds.setURL("jdbc:oracle:thin:@//jxr3-scan.jcrew.com:1521/rwmsp_app.jcrew.com");
 			localPds.setUser("wmsops");
 			localPds.setPassword("o1p2s3wms");
             //*/
             
             /*
             // options for qa
-            localPds.setURL("jdbc:oracle:thin:@//jxr3-scan.jcrew.com:1521/rwmsq1_app.jcrew.com");
+            localPds.setURL("jdbc:oracle:thin:@//jxr3-scan.jcrew.com:1521/rwmsp_app.jcrew.com");
             localPds.setUser("WMSRO");
             localPds.setPassword("WMSRO45");
             */

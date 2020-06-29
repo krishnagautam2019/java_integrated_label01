@@ -14,14 +14,14 @@ public class ProcessIpcMessage implements Runnable {
 	private Logger loggerObj;
 	private String ipcMsg;
 	private ScandataCommunicationVariables scv;
-	private PrinterSupport prns;
+	//private PrinterSupport prns;
 	
-	ProcessIpcMessage ( PoolDataSource vpds, Logger vLoggerObj, String vIpcMsg, ScandataCommunicationVariables vscv, PrinterSupport v_prns ) {
+	ProcessIpcMessage ( PoolDataSource vpds, Logger vLoggerObj, String vIpcMsg, ScandataCommunicationVariables vscv ) {
 		this.pds = vpds;
 		this.loggerObj = vLoggerObj;
 		this.ipcMsg = vIpcMsg;
 		this.scv = vscv;
-		this.prns = v_prns;
+		//this.prns = v_prns;
 	}
 	
 	public void run() {
@@ -94,14 +94,14 @@ public class ProcessIpcMessage implements Runnable {
 			
             ///*
             //options for prod
-			localPds.setURL("jdbc:oracle:thin:@//jxr3-scan.jcrew.com:1521/rwmsq1_app.jcrew.com");
+			localPds.setURL("jdbc:oracle:thin:@//jxr3-scan.jcrew.com:1521/rwmsp_app.jcrew.com");
 			localPds.setUser("wmsops");
 			localPds.setPassword("o1p2s3wms");
             //*/
             
             /*
             // options for qa
-            localPds.setURL("jdbc:oracle:thin:@//jxr3-scan.jcrew.com:1521/rwmsq1_app.jcrew.com");
+            localPds.setURL("jdbc:oracle:thin:@//jxr3-scan.jcrew.com:1521/rwmsp_app.jcrew.com");
             localPds.setUser("WMSRO");
             localPds.setPassword("WMSRO45");
             */
@@ -144,7 +144,7 @@ public class ProcessIpcMessage implements Runnable {
 
 	private void processPrintShipLabelForCarton ( String v_tc_lpn_id, String v_printer_name ) {
 		loggerObj.debug( "Process Print ship label : " + v_tc_lpn_id );
-		TransactionPrintShipLabel psl = new TransactionPrintShipLabel( pds, loggerObj, scv, prns, v_tc_lpn_id, v_printer_name );
+		TransactionPrintShipLabel psl = new TransactionPrintShipLabel( pds, loggerObj, scv, v_tc_lpn_id, v_printer_name );
 		psl.printShipLabel();
 	}
 
