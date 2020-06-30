@@ -25,6 +25,7 @@ import oracle.ucp.jdbc.PoolDataSource;
 
 public class TransactionLoadShipUnitsForTrailer {
 	
+	private DatabaseConnectionPoolSupport cps;
 	private PoolDataSource pds;
 	private Logger loggerObj;
 	private ScandataCommunicationVariables scv;
@@ -33,8 +34,9 @@ public class TransactionLoadShipUnitsForTrailer {
 	private int loaded_lpn_count;
 	public int errorCode;
 	
-	public TransactionLoadShipUnitsForTrailer ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_shipment_id ) {
-		this.pds = vpds;
+	public TransactionLoadShipUnitsForTrailer ( DatabaseConnectionPoolSupport vcps, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_shipment_id ) {
+		this.cps = vcps;
+		this.pds = this.cps.getPoolDataSource();
 		this.loggerObj = vLoggerObj;
 		this.scv = vscv;
 		this.tc_shipment_id = v_tc_shipment_id;

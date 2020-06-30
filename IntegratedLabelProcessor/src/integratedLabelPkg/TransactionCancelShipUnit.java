@@ -25,14 +25,16 @@ import oracle.ucp.jdbc.PoolDataSource;
 
 public class TransactionCancelShipUnit {
 	
+	private DatabaseConnectionPoolSupport cps;
 	private PoolDataSource pds;
 	private Logger loggerObj;
 	private ScandataCommunicationVariables scv;
 	private String tc_lpn_id;
 	public int errorCode;
 	
-	public TransactionCancelShipUnit ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id ) {
-		this.pds = vpds;
+	public TransactionCancelShipUnit ( DatabaseConnectionPoolSupport vcps, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id ) {
+		this.cps = vcps;
+		this.pds = this.cps.getPoolDataSource();
 		this.loggerObj = vLoggerObj;
 		this.scv = vscv;
 		this.tc_lpn_id = v_tc_lpn_id;

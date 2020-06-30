@@ -33,6 +33,7 @@ import oracle.ucp.jdbc.PoolDataSource;
 
 public class TransactionPrintShipLabel {
 	
+	private DatabaseConnectionPoolSupport cps;
 	private PoolDataSource pds;
 	private Logger loggerObj;
 	private ScandataCommunicationVariables scv;
@@ -41,8 +42,9 @@ public class TransactionPrintShipLabel {
 	private String printer_name;
 	public int errorCode;
 	
-	public TransactionPrintShipLabel ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id, String v_printer_name ) {
-		this.pds = vpds;
+	public TransactionPrintShipLabel ( DatabaseConnectionPoolSupport vcps, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id, String v_printer_name ) {
+		this.cps = vcps;
+		this.pds = this.cps.getPoolDataSource();
 		this.loggerObj = vLoggerObj;
 		this.scv = vscv;
 		//this.printers = v_printers;
@@ -54,9 +56,26 @@ public class TransactionPrintShipLabel {
 	public void printShipLabel () {
 		loggerObj.info( tc_lpn_id + " : printShipLabel"  );
 		
+		//this segment could commented after unit testing.
+		try {
+			String connName  = pds.getConnectionPoolName();
+			int avlConnCount = pds.getAvailableConnectionsCount();
+			int brwConnCount = pds.getBorrowedConnectionsCount();
+			loggerObj.debug( tc_lpn_id + " : " + connName + " has Available connections: " + avlConnCount + "; Borrowed connections: " + brwConnCount );
+		} catch( SQLException se ) {
+			loggerObj.error("Unable to get connection Pool Details. \n",se);
+		}
+		
 		String v_label_url = new String();
 		String ship_via = get_ship_via_for_carton( tc_lpn_id );
 		loggerObj.debug( tc_lpn_id + " : ship_via for carton is :" + ship_via );
+		
+		//restart the connection data pool is 
+		if ( ship_via.isEmpty() || ship_via == null ) {
+			pds = cps.restartPoolDataSource(); 
+			ship_via = get_ship_via_for_carton( tc_lpn_id );
+			loggerObj.debug( tc_lpn_id + " : ship_via for carton is :" + ship_via );
+		}
 
 		if ( ship_via.contentEquals( "ERRR" ) ) {
 			//print error label
@@ -101,7 +120,7 @@ public class TransactionPrintShipLabel {
 		} else if ( ship_via.contentEquals( "UGRD" ) ) {
 			loggerObj.info( tc_lpn_id + " , ship_via :  " + ship_via + " : Inititing new UpgradeShipUnit transaction with scandata for carton." );
 			
-			TransactionUpgradeShipUnit usu = new TransactionUpgradeShipUnit( pds, loggerObj, scv, tc_lpn_id, ship_via );
+			TransactionUpgradeShipUnit usu = new TransactionUpgradeShipUnit( cps, loggerObj, scv, tc_lpn_id, ship_via );
 			usu.upgradeShipUnitMsgScandata();
 			if ( usu.errorCode == 0 ) {
 				errorCode = 0;
@@ -136,7 +155,7 @@ public class TransactionPrintShipLabel {
 			} else if ( v_label_url.contentEquals( tc_lpn_id ) ) {
 				loggerObj.info( tc_lpn_id + " , ship_via :  " + ship_via + " : Inititing new CreateShipUnit transaction with scandata for carton." );
 					
-				TransactionCreateShipUnit csu = new TransactionCreateShipUnit( pds, loggerObj, scv, tc_lpn_id, ship_via );
+				TransactionCreateShipUnit csu = new TransactionCreateShipUnit( cps, loggerObj, scv, tc_lpn_id, ship_via );
 				csu.createShipUnitMsgScandata();
 				if ( csu.errorCode == 0 ) {
 					errorCode = 0;
@@ -151,7 +170,7 @@ public class TransactionPrintShipLabel {
 			} else if ( ( ! v_label_url.contentEquals( "0" ) ) && ( ! v_label_url.substring(0,4).contentEquals( "http" ) ) ) {
 				//so we got a tracking number but no label
 				//request a new label from scandata
-				TransactionGetShipUnitLabelLabel gsu = new TransactionGetShipUnitLabelLabel( pds, loggerObj, scv, tc_lpn_id );
+				TransactionGetShipUnitLabelLabel gsu = new TransactionGetShipUnitLabelLabel( cps, loggerObj, scv, tc_lpn_id );
 				gsu.getShipUnitLabelMsgScandata();
 				if ( gsu.errorCode == 0 ) {
 					errorCode = 0;
@@ -199,6 +218,16 @@ public class TransactionPrintShipLabel {
 		//print the label
 		if ( ! labelData.isEmpty() ) {
 			print_label_to_printer( labelData, printer_name );
+		}
+		
+		//this segment could commented after unit testing.
+		try {
+			String connName  = pds.getConnectionPoolName();
+			int avlConnCount = pds.getAvailableConnectionsCount();
+			int brwConnCount = pds.getBorrowedConnectionsCount();
+			loggerObj.debug( tc_lpn_id + " : " + connName + " has Available connections: " + avlConnCount + "; Borrowed connections: " + brwConnCount );
+		} catch( SQLException se ) {
+			loggerObj.error("Unable to get connection Pool Details. \n",se);
 		}
 	}
 	
@@ -269,7 +298,7 @@ public class TransactionPrintShipLabel {
 
 	private void print_label_to_printer( String labelData, String v_printer_name ) {
 		
-		loggerObj.info( "Print the label data on : " + v_printer_name );
+		loggerObj.info( this.tc_lpn_id + " : Print the label data on : " + v_printer_name );
 		//loggerObj.debug( "label Data is : \n" + labelData );
 		
 		try {
@@ -283,17 +312,18 @@ public class TransactionPrintShipLabel {
 			aset.add( new JobName( tc_lpn_id + "_integrated_label" , Locale.getDefault() ) );
 			aset.add( new Copies(1) );
 			
-			PrintService[] pservices = PrintServiceLookup.lookupPrintServices( DocFlavor.SERVICE_FORMATTED.PRINTABLE, null);
-			loggerObj.debug( this.tc_lpn_id + " : Printers deducted " + pservices.length );
+			PrintService[] pservices = PrintServiceLookup.lookupPrintServices(null,null);
+			//loggerObj.debug( this.tc_lpn_id + " : Printers deducted " + pservices.length );
 			
 	        // Retrieve a print service from the array
 			PrintService service = null;
 			for (int index = 0; service == null && index < pservices.length; index++) {
 				
-				//loggerObj.debug( this.tc_lpn_id + " : Printer index trace index " + index + " : " + pservices[index].getName().toUpperCase() );
+				//:q
+				loggerObj.debug( this.tc_lpn_id + " : Printer index trace index " + index + " : " + pservices[index].getName().toUpperCase() );
 	            
 				if (pservices[index].getName().toUpperCase().indexOf(v_printer_name) >= 0) {
-	            	//loggerObj.info( this.tc_lpn_id + " : Printer index is " + index );
+	            	//loggerObj.debug( this.tc_lpn_id + " : Printer index is " + index );
 	                service = pservices[index];
 	    			DocPrintJob job = service.createPrintJob();
 	    			job.print( doc, aset );
@@ -313,7 +343,7 @@ public class TransactionPrintShipLabel {
 
 	private String get_ship_via_for_carton ( String v_tc_lpn_id ) {
 		
-		loggerObj.info( "get_ship_via_for_carton : " + v_tc_lpn_id );
+		loggerObj.info( v_tc_lpn_id + " : get_ship_via_for_carton." );
 		
 		try {
 			Connection dbConn = pds.getConnection();

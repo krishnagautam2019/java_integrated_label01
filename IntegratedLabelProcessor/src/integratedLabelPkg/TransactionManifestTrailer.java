@@ -25,22 +25,25 @@ import oracle.ucp.jdbc.PoolDataSource;
 
 public class TransactionManifestTrailer {
 	
+	private DatabaseConnectionPoolSupport cps;
 	private PoolDataSource pds;
 	private Logger loggerObj;
 	private ScandataCommunicationVariables scv;
 	private String tc_shipment_id;
 	public int errorCode;
 	
-	public TransactionManifestTrailer ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_shipment_id ) {
-		this.pds = vpds;
+	public TransactionManifestTrailer ( DatabaseConnectionPoolSupport vcps, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_shipment_id ) {
+		this.cps = vcps;
+		this.pds = this.cps.getPoolDataSource();
 		this.loggerObj = vLoggerObj;
 		this.scv = vscv;
 		this.tc_shipment_id = v_tc_shipment_id;
 		this.errorCode = -1;
 	}
 	
-	public TransactionManifestTrailer ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_shipment_id, String v_ship_via ) {
-		this.pds = vpds;
+	public TransactionManifestTrailer ( DatabaseConnectionPoolSupport vcps, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_shipment_id, String v_ship_via ) {
+		this.cps = vcps;
+		this.pds = this.cps.getPoolDataSource();
 		this.loggerObj = vLoggerObj;
 		this.scv = vscv;
 		this.tc_shipment_id = v_tc_shipment_id;
@@ -54,7 +57,7 @@ public class TransactionManifestTrailer {
 		//if cartons are not already loaded then go ahead and load them.
 		if (loadMsgs == 0) {
 			//loggerObj.info( "Process Load Trail : " + tc_shipment_id );
-			TransactionLoadShipUnitsForTrailer gsl = new TransactionLoadShipUnitsForTrailer( pds, loggerObj, scv, tc_shipment_id );
+			TransactionLoadShipUnitsForTrailer gsl = new TransactionLoadShipUnitsForTrailer( cps, loggerObj, scv, tc_shipment_id );
 			gsl.processLoadShipUnitsForTrailer();
 		}
 		

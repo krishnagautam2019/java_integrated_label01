@@ -1,13 +1,10 @@
 package integratedLabelPkg;
 
-
 import org.apache.logging.log4j.Logger;
-
-import oracle.ucp.jdbc.PoolDataSource;
 
 public class TransactionUpgradeShipUnit {
 	
-	private PoolDataSource pds;
+	private DatabaseConnectionPoolSupport cps;
 	private Logger loggerObj;
 	private ScandataCommunicationVariables scv;
 	private String tc_lpn_id;
@@ -17,8 +14,8 @@ public class TransactionUpgradeShipUnit {
 	public int errorCode;
 	public String labelUrl;
 	
-	public TransactionUpgradeShipUnit ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id ) {
-		this.pds = vpds;
+	public TransactionUpgradeShipUnit ( DatabaseConnectionPoolSupport vcps, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id ) {
+		this.cps = vcps;
 		this.loggerObj = vLoggerObj;
 		this.scv = vscv;
 		this.tc_lpn_id = v_tc_lpn_id;
@@ -27,8 +24,8 @@ public class TransactionUpgradeShipUnit {
 		this.labelUrl = new String();
 	}
 	
-	public TransactionUpgradeShipUnit ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id, String v_ship_via ) {
-		this.pds = vpds;
+	public TransactionUpgradeShipUnit ( DatabaseConnectionPoolSupport vcps, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id, String v_ship_via ) {
+		this.cps = vcps;
 		this.loggerObj = vLoggerObj;
 		this.scv = vscv;
 		this.tc_lpn_id = v_tc_lpn_id;
@@ -43,13 +40,13 @@ public class TransactionUpgradeShipUnit {
 		//Boolean b_ship_via = ship_via.isEmpty();
 		
 		loggerObj.info( tc_lpn_id + " : Process CancelShipUnits.");
-		TransactionCancelShipUnit cancel_su = new TransactionCancelShipUnit( pds, loggerObj, scv, tc_lpn_id );
+		TransactionCancelShipUnit cancel_su = new TransactionCancelShipUnit( cps, loggerObj, scv, tc_lpn_id );
 		cancel_su.cancelShipUnitMsgScandata();
 		this.errorCode = cancel_su.errorCode;
 		
 		if ( this.errorCode == 0 ) {
 			loggerObj.debug( tc_lpn_id + " : Process CreateShipUnits." );
-			TransactionCreateShipUnit create_su = new TransactionCreateShipUnit( pds, loggerObj, scv, tc_lpn_id );
+			TransactionCreateShipUnit create_su = new TransactionCreateShipUnit( cps, loggerObj, scv, tc_lpn_id );
 			create_su.createShipUnitMsgScandata();
 			
 			if ( create_su.errorCode == 0 ) {

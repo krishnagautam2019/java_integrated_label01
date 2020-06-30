@@ -25,6 +25,7 @@ import oracle.ucp.jdbc.PoolDataSource;
 
 public class TransactionCreateShipUnit {
 	
+	private DatabaseConnectionPoolSupport cps;
 	private PoolDataSource pds;
 	private Logger loggerObj;
 	private ScandataCommunicationVariables scv;
@@ -33,8 +34,9 @@ public class TransactionCreateShipUnit {
 	public int errorCode;
 	public String labelUrl;
 	
-	public TransactionCreateShipUnit ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id ) {
-		this.pds = vpds;
+	public TransactionCreateShipUnit ( DatabaseConnectionPoolSupport vcps, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id ) {
+		this.cps = vcps;
+		this.pds = this.cps.getPoolDataSource();
 		this.loggerObj = vLoggerObj;
 		this.scv = vscv;
 		this.tc_lpn_id = v_tc_lpn_id;
@@ -43,8 +45,9 @@ public class TransactionCreateShipUnit {
 		this.labelUrl = new String();
 	}
 	
-	public TransactionCreateShipUnit ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id, String v_ship_via ) {
-		this.pds = vpds;
+	public TransactionCreateShipUnit ( DatabaseConnectionPoolSupport vcps, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id, String v_ship_via ) {
+		this.cps = vcps;
+		this.pds = this.cps.getPoolDataSource();
 		this.loggerObj = vLoggerObj;
 		this.scv = vscv;
 		this.tc_lpn_id = v_tc_lpn_id;

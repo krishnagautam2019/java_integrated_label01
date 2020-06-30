@@ -2,11 +2,8 @@ package integratedLabelPkg;
 
 import org.apache.logging.log4j.Logger;
 
-import oracle.ucp.jdbc.PoolDataSource;
-import oracle.ucp.jdbc.PoolDataSourceFactory;
 
 import java.net.ServerSocket;
-import java.sql.SQLException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -20,6 +17,7 @@ import org.apache.logging.log4j.LogManager;
 **/
 public class IntegratedLabelServer {
 	
+	private static final Integer threadPoolSize = 10;
 	private static final Logger loggerObj = LogManager.getLogger( IntegratedLabelServer.class.getName() );
 
     /**
@@ -39,21 +37,12 @@ public class IntegratedLabelServer {
 		ServerSocket listener = new ServerSocket(37000);
 		ScandataCommunicationVariables scv = new ScandataCommunicationVariables();
 		//PrinterSupport printers = new PrinterSupport();
-        ExecutorService executor = Executors.newFixedThreadPool(10);
-        PoolDataSource pds = connectionInit();
-        
-		//once the thread has been spawned lets get a connection pool going
-		if ( pds == null) {
-			try {
-				pds = connectionInit();
-			} catch ( Exception e ) {
-				loggerObj.error( "Exception in trying to create DB connection. \n", e );
-			}	
-		}
+        ExecutorService executor = Executors.newFixedThreadPool( threadPoolSize );
+        DatabaseConnectionPoolSupport cps = new DatabaseConnectionPoolSupport( loggerObj );
         
         try {
             while (true) {
-                new IntegratedLabel_IPC_Thread( listener.accept(), clientNumber++, loggerObj, pds, executor, scv ).run();
+                new IntegratedLabel_IPC_Thread( listener.accept(), clientNumber++, loggerObj, cps, executor, scv ).run();
                 loggerObj.info("The server is now listening on port 37000.");
                 
                 if ( clientNumber == 9998 ) {
@@ -72,43 +61,4 @@ public class IntegratedLabelServer {
 
 	}
 	
-	private static PoolDataSource connectionInit() {
-		
-		try {
-			PoolDataSource localPds = PoolDataSourceFactory.getPoolDataSource();
-			
-			//Setting connection properties of the data source
-			localPds.setConnectionFactoryClassName("oracle.jdbc.pool.OracleDataSource");
-			
-            ///*
-            //options for prod
-			localPds.setURL("jdbc:oracle:thin:@//jxr3-scan.jcrew.com:1521/rwmsp_app.jcrew.com");
-			localPds.setUser("wmsops");
-			localPds.setPassword("o1p2s3wms");
-            //*/
-            
-            /*
-            // options for qa
-            localPds.setURL("jdbc:oracle:thin:@//jxr3-scan.jcrew.com:1521/rwmsp_app.jcrew.com");
-            localPds.setUser("WMSRO");
-            localPds.setPassword("WMSRO45");
-            */
-			
-			//Setting pool properties
-			localPds.setInitialPoolSize(2);
-			localPds.setMinPoolSize(2);
-			localPds.setMaxPoolSize(20);
-			localPds.setAbandonedConnectionTimeout ( 10 );
-			localPds.setTimeToLiveConnectionTimeout ( 600 );
-			localPds.setConnectionPoolName ( "IntegratedLabelThread" );
-			
-			loggerObj.debug ( "Opening a new DB connection pool" );
-			
-			return localPds;
-		} catch ( SQLException e ) {
-			loggerObj.error( "Error trying initialize Connection Pool", e );
-		}
-		
-		return null;
-	}
 }

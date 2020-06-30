@@ -25,6 +25,7 @@ import oracle.ucp.jdbc.PoolDataSource;
 
 public class TransactionGetShipUnitLabelLabel {
 	
+	private DatabaseConnectionPoolSupport cps;
 	private PoolDataSource pds;
 	private Logger loggerObj;
 	private ScandataCommunicationVariables scv;
@@ -32,9 +33,9 @@ public class TransactionGetShipUnitLabelLabel {
 	public int errorCode;
 	public String labelUrl;
 	
-	public TransactionGetShipUnitLabelLabel ( PoolDataSource vpds, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id ) {
-		this.pds = vpds;
-		this.loggerObj = vLoggerObj;
+	public TransactionGetShipUnitLabelLabel ( DatabaseConnectionPoolSupport vcps, Logger vLoggerObj, ScandataCommunicationVariables vscv, String v_tc_lpn_id ) {
+		this.cps = vcps;
+		this.pds = this.cps.getPoolDataSource();
 		this.scv = vscv;
 		this.tc_lpn_id = v_tc_lpn_id;
 		this.errorCode = -1;

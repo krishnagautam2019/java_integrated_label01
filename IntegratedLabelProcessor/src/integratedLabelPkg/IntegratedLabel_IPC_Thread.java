@@ -1,7 +1,5 @@
 package integratedLabelPkg;
 
-import oracle.ucp.jdbc.PoolDataSource;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -16,27 +14,26 @@ class IntegratedLabel_IPC_Thread implements Runnable {
 	
     private Socket socket;
     private int clientNumber;
-	private PoolDataSource pds;
+	private DatabaseConnectionPoolSupport cps;
 	private Logger loggerObj;
 	private ExecutorService executor;
 	private ScandataCommunicationVariables scv;
 	//private PrinterSupport printers;
     //private static int ipcMaxIdleTime = 3000; //wait maximum 3000 millis
 	
-	IntegratedLabel_IPC_Thread ( Socket socket, int clientNumber, Logger vlogger, PoolDataSource vpds, ExecutorService vexecutor, ScandataCommunicationVariables vscv ) {
+	IntegratedLabel_IPC_Thread ( Socket socket, int clientNumber, Logger vlogger, DatabaseConnectionPoolSupport vcps, ExecutorService vexecutor, ScandataCommunicationVariables vscv ) {
 		boolean keepAliveToggle = true;
         try {
 			this.loggerObj = vlogger;
 			this.socket = socket;
 			this.clientNumber = clientNumber;
-			this.pds = vpds;
+			this.cps = vcps;
 			this.executor = vexecutor;
 			//this.printers = vprinters;
 			this.scv = vscv;
-			this.pds = vpds;
 			
 			if(keepAliveToggle) {
-				loggerObj.debug("Keep alive Toggle is ON");
+				//loggerObj.debug("Keep alive Toggle is ON");
 				if(!socket.getKeepAlive()) {
 					socket.setKeepAlive(true);
 					//loggerObj.debug("Keep Alive was OFF; has been switched ON");
@@ -85,7 +82,7 @@ class IntegratedLabel_IPC_Thread implements Runnable {
 					loggerObj.debug( "ipcLine : " + ipcLine );  
                 	
                 	//call the executor service 
-                	Runnable processMsgTask = new ProcessIpcMessage( pds, loggerObj, ipcLine, scv );
+                	Runnable processMsgTask = new ProcessIpcMessage( cps, loggerObj, ipcLine, scv );
       				loggerObj.trace( "Calling insert executor with " + ipcLine );
       				executor.execute( processMsgTask );
                   }
